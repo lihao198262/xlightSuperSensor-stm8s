@@ -79,7 +79,7 @@ Connections:
 #define SEN_READ_PIR                    0x1FFF
 #define SEN_READ_PM25                   0xFFFF
 
-#define ONOFF_RESET_TIMES               3       // on / off times to reset device
+#define ONOFF_RESET_TIMES               30       // on / off times to reset device
 #define REGISTER_RESET_TIMES            30      // default 5, super large value for show only to avoid ID mess
 
 // Unique ID
