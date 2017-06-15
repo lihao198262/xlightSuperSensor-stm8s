@@ -102,9 +102,17 @@ uint8_t ParseProtocol(){
     break;
     
   case C_SET:
-    {
-      u32 buf[2] = {0x00FF00FFL, 0xFFFFFFFFL};
-      Set_Send_Buf(buf, 2);
+    if( IS_MINE_SUBID(_sensor) && !_isAck ) {
+      if( _type == V_STATUS ) {
+        // set zensensor on/off
+        bool _OnOff = (msg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : msg.payload.bValue == DEVICE_SW_ON);
+        gConfig.state = _OnOff;
+        gIsChanged = TRUE;
+        if( _needAck ) {
+          Msg_DevOnOff(_sender);
+          return 1;
+        }
+      }
     }
     break;
   }
@@ -155,10 +163,20 @@ void Msg_RequestNodeID() {
 
 // Prepare device presentation message
 void Msg_Presentation() {
+  build(NODEID_GATEWAY, S_ZENSENSOR, C_PRESENTATION, gConfig.type, 1, 0); // S_LIGHT, S_ZENSENSOR
   build(NODEID_GATEWAY, S_ZENREMOTE, C_PRESENTATION, gConfig.type, 1, 0); // S_LIGHT, S_ZENSENSOR
   miSetPayloadType(P_ULONG32);
   miSetLength(UNIQUE_ID_LEN);
   memcpy(msg.payload.data, _uniqueID, UNIQUE_ID_LEN);
+  bMsgReady = 1;
+}
+
+// Prepare device On/Off status message
+void Msg_DevOnOff(uint8_t _to) {
+  build(_to, gConfig.subID, C_REQ, V_STATUS, 0, 1);
+  miSetLength(1);
+  miSetPayloadType(P_BYTE);
+  msg.payload.bValue = gConfig.state;
   bMsgReady = 1;
 }
 
