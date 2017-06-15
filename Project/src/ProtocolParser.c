@@ -83,7 +83,7 @@ uint8_t ParseProtocol(){
     break;
     
   case C_PRESENTATION:
-    if( _sensor == S_LIGHT ) {
+    if( _sensor == S_ZENSENSOR ) {
       if( _isAck ) {
         // Device/client got Response to Presentation message, ready to work
         gConfig.token = msg.payload.uiValue;
@@ -150,7 +150,7 @@ void Msg_RequestNodeID() {
 
 // Prepare device presentation message
 void Msg_Presentation() {
-  build(NODEID_GATEWAY, S_LIGHT, C_PRESENTATION, gConfig.type, 1, 0); // S_LIGHT, S_ZENSENSOR
+  build(NODEID_GATEWAY, S_ZENSENSOR, C_PRESENTATION, gConfig.type, 1, 0); // S_LIGHT, S_ZENSENSOR
   miSetPayloadType(P_ULONG32);
   miSetLength(UNIQUE_ID_LEN);
   memcpy(msg.payload.data, _uniqueID, UNIQUE_ID_LEN);
