@@ -223,6 +223,8 @@ void LoadConfig()
       gConfig.senMap |= sensorDUST;
 #endif
     }
+    // Start ZenSensor
+    gConfig.state = 1;
 }
 
 void UpdateNodeAddress(void) {
@@ -457,81 +459,85 @@ int main( void ) {
       // Feed the Watchdog
       feed_wwdg();
       
-      // Read sensors
+      if( gConfig.state ) {
+        
+        // Read sensors
 #ifdef EN_SENSOR_PIR
-      /// Read PIR
-      if( gConfig.senMap & sensorPIR ) {
-        if( !bMsgReady && !pir_tick ) {
-          // Reset read timer
-          pir_tick = SEN_READ_PIR;
-          pir_st = pir_read();
-          if( pre_pir_st != pir_st ) {
-            // Send detection message
-            pre_pir_st = pir_st;
-            Msg_SenPIR(pre_pir_st);
+        /// Read PIR
+        if( gConfig.senMap & sensorPIR ) {
+          if( !bMsgReady && !pir_tick ) {
+            // Reset read timer
+            pir_tick = SEN_READ_PIR;
+            pir_st = pir_read();
+            if( pre_pir_st != pir_st ) {
+              // Send detection message
+              pre_pir_st = pir_st;
+              Msg_SenPIR(pre_pir_st);
+            }
+          } else if( pir_tick > 0 ) {
+            pir_tick--;
           }
-        } else if( pir_tick > 0 ) {
-          pir_tick--;
         }
-      }
 #endif
-
+        
 #ifdef EN_SENSOR_ALS
-      /// Read ALS
-      if( gConfig.senMap & sensorALS ) {
-        if( !bMsgReady && !als_tick ) {
-          // Reset read timer
-          als_tick = SEN_READ_ALS;
-          if( als_checkData() ) {
-            if( pre_als_value != als_value ) {
-              // Send brightness message
-              pre_als_value = als_value;
-              Msg_SenALS(pre_als_value);
+        /// Read ALS
+        if( gConfig.senMap & sensorALS ) {
+          if( !bMsgReady && !als_tick ) {
+            // Reset read timer
+            als_tick = SEN_READ_ALS;
+            if( als_checkData() ) {
+              if( pre_als_value != als_value ) {
+                // Send brightness message
+                pre_als_value = als_value;
+                Msg_SenALS(pre_als_value);
+              }
             }
+          } else if( als_tick > 0 ) {
+            als_tick--;
           }
-        } else if( als_tick > 0 ) {
-          als_tick--;
         }
-      }
 #endif
-      
+        
 #ifdef EN_SENSOR_PM25
-      if( gConfig.senMap & sensorDUST ) {
-        if( !bMsgReady && !pm25_tick ) {
-          pm25_tick = SEN_READ_PM25;
-          // Reset read timer
-          if( pm25_ready ) {
-            if( lv_pm2_5 != pm25_value ) {
-              lv_pm2_5 = pm25_value;
-              if( lv_pm2_5 < 5 ) lv_pm2_5 = 8;
-              // Send PM2.5 to Controller
-              Msg_SenPM25(lv_pm2_5);
-            } else if( pm25_alive ) {
-              pm25_alive = FALSE;
-              pm25_alivetick = 20;
-            } else if( --pm25_alivetick == 0 ) {
-              // Reset PM2.5 moudle or restart the node
-              mStatus = SYS_RESET;
-              pm25_init();
+        if( gConfig.senMap & sensorDUST ) {
+          if( !bMsgReady && !pm25_tick ) {
+            pm25_tick = SEN_READ_PM25;
+            // Reset read timer
+            if( pm25_ready ) {
+              if( lv_pm2_5 != pm25_value ) {
+                lv_pm2_5 = pm25_value;
+                if( lv_pm2_5 < 5 ) lv_pm2_5 = 8;
+                // Send PM2.5 to Controller
+                Msg_SenPM25(lv_pm2_5);
+              } else if( pm25_alive ) {
+                pm25_alive = FALSE;
+                pm25_alivetick = 20;
+              } else if( --pm25_alivetick == 0 ) {
+                // Reset PM2.5 moudle or restart the node
+                mStatus = SYS_RESET;
+                pm25_init();
+              }
+            }
+          } else if( pm25_tick > 0 ) {
+            pm25_tick--;
+          }
+        }
+#endif
+        
+        // Idle Tick
+        if( !bMsgReady ) {
+          mIdle_tick++;
+          // Check Keep Alive Timer
+          if( mIdle_tick == 0 ) {
+            if( ++mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
+              // Send DHT?
+              //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
             }
           }
-        } else if( pm25_tick > 0 ) {
-          pm25_tick--;
         }
-      }
-#endif
-      
-      // Idle Tick
-      if( !bMsgReady ) {
-        mIdle_tick++;
-        // Check Keep Alive Timer
-        if( mIdle_tick == 0 ) {
-          if( ++mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
-            // Send DHT?
-            //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
-          }
-        }
-      }
+        
+      } // End of if( gConfig.state )
       
       // Send message if ready
       SendMyMessage();
