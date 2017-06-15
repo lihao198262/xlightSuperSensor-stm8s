@@ -75,6 +75,9 @@
         <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_spi.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_tim1.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_tim2.c</name>
       </file>
       <file>
@@ -100,6 +103,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\ADC1Dev.h</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\inc\infrared.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\MyMessage.h</name>
@@ -139,6 +145,9 @@
       <name>src</name>
       <file>
         <name>$PROJ_DIR$\Project\src\ADC1Dev.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\infrared.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\main.c</name>

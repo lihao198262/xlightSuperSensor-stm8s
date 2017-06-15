@@ -4,6 +4,7 @@
 #include "xliNodeConfig.h"
 #include "ProtocolParser.h"
 #include "Uart2Dev.h"
+#include "infrared.h"
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
 #include "ADC1Dev.h"
@@ -191,7 +192,7 @@ void SaveConfig()
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController
 void InitNodeAddress() {
   // Whether has preset node id
-  gConfig.nodeID = NODEID_SUPERSENSOR;
+  gConfig.nodeID = NODEID_KEYSIMULATOR;
   memcpy(gConfig.NetworkID, RF24_BASE_RADIO_ID, ADDRESS_WIDTH);
 }
 
@@ -200,7 +201,7 @@ void LoadConfig()
 {
     // Load the most recent settings from FLASH
     Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != NODEID_SUPERSENSOR ) {
+    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != NODEID_KEYSIMULATOR ) {
       memset(&gConfig, 0x00, sizeof(gConfig));
       gConfig.version = XLA_VERSION;
       InitNodeAddress();
@@ -435,6 +436,7 @@ int main( void ) {
   // Init ADC
   ADC1_Config();
 #endif  
+  Infrared_Init();
   
   while(1) {
     // Go on only if NRF chip is presented
@@ -456,7 +458,7 @@ int main( void ) {
       
       // Feed the Watchdog
       feed_wwdg();
-      
+      IR_Send();
       // Read sensors
 #ifdef EN_SENSOR_PIR
       /// Read PIR
