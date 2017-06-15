@@ -2,7 +2,7 @@
 
 <project>
   <fileVersion>2</fileVersion>
-  <fileChecksum>397049794</fileChecksum>
+  <fileChecksum>2601354099</fileChecksum>
   <configuration>
     <name>Debug</name>
     <outputs>
@@ -151,6 +151,10 @@
       <file>$PROJ_DIR$\Debug\Obj\LightControl.pbi</file>
       <file>$TOOLKIT_DIR$\inc\c\string.h</file>
       <file>$PROJ_DIR$\Debug\Obj\stm8s_adc1.o</file>
+      <file>$PROJ_DIR$\Debug\Obj\relay_key.o</file>
+      <file>$PROJ_DIR$\Debug\Obj\relay_key.pbi</file>
+      <file>$PROJ_DIR$\Project\src\relay_key.c</file>
+      <file>$PROJ_DIR$\Project\inc\relay_key.h</file>
     </outputs>
     <file>
       <name>$PROJ_DIR$\Project\src\timer.c</name>
@@ -565,11 +569,11 @@
       <inputs>
         <tool>
           <name>BICOMP</name>
-          <file> 143 89 39 66 126 135 97 76 93 67 60 68 78 58 18 84 71 75 42 92 114 61 95 80 48 62 37 59 94 44 49 35 85 88 36 137 54 24 0</file>
+          <file> 42 78 60 66 68 135 58 18 93 92 126 89 97 39 76 71 75 148 67 143 114 61 95 80 84 48 62 37 59 94 44 49 35 85 88 36 137 54 24 0</file>
         </tool>
         <tool>
           <name>ICCSTM8</name>
-          <file> 84 135 92 62 114 37 60 59 61 94 126 44 95 49 68 35 80 89 85 88 78 48 42 39 18 137 24 0 97 54 36 58 143 76 71 66 75 93 67</file>
+          <file> 84 135 92 62 114 37 60 59 61 94 126 44 95 49 68 35 80 89 85 88 78 48 42 39 18 137 24 0 97 54 36 58 143 76 71 66 75 93 148 67</file>
         </tool>
       </inputs>
     </file>
@@ -601,7 +605,7 @@
       <inputs>
         <tool>
           <name>ILINK</name>
-          <file> 134 22 1 55 11 27 41 56 144 131 128 140 129 118 106 124 57 125 33 26 136 2 7</file>
+          <file> 134 22 1 55 145 11 27 41 56 144 131 128 140 129 118 106 124 57 125 33 26 136 2 7</file>
         </tool>
       </inputs>
     </file>
@@ -620,11 +624,11 @@
       <inputs>
         <tool>
           <name>BICOMP</name>
-          <file> 24 84 135 92 94 39 71 143 37 49 88 36 54 18 66 42 48 62 59 44 35 85 137 0 75 114 60 61 126 95 68 80 89 78 58 97</file>
+          <file> 42 80 66 84 61 135 71 92 114 95 18 39 148 143 60 126 68 89 78 58 97 75 48 62 37 59 94 44 49 35 85 88 36 137 54 24 0</file>
         </tool>
         <tool>
           <name>ICCSTM8</name>
-          <file> 75 84 135 92 62 114 37 60 59 61 94 126 44 95 49 68 35 80 89 85 88 78 48 42 39 18 137 24 0 97 54 36 58 143 71 66</file>
+          <file> 75 84 135 92 62 114 37 60 59 61 94 126 44 95 49 68 35 80 89 85 88 78 48 42 39 18 137 24 0 97 54 36 58 143 71 148 66</file>
         </tool>
       </inputs>
     </file>
@@ -848,6 +852,29 @@
           <file> 103</file>
         </tool>
       </outputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Project\src\relay_key.c</name>
+      <outputs>
+        <tool>
+          <name>BICOMP</name>
+          <file> 146</file>
+        </tool>
+        <tool>
+          <name>ICCSTM8</name>
+          <file> 145</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>BICOMP</name>
+          <file> 61 80 114 95 135 71 60 126 68 89 78 148 92 48 62 37 59 94 44 49 35 85 88</file>
+        </tool>
+        <tool>
+          <name>ICCSTM8</name>
+          <file> 135 92 62 114 37 60 59 61 94 126 44 95 49 68 35 80 89 85 88 78 48 148 71</file>
+        </tool>
+      </inputs>
     </file>
     <forcedrebuild>
       <name>$PROJ_DIR$\Project\src\LightPwmDrv.c</name>
