@@ -63,7 +63,8 @@ typedef struct
   UC nodeID;                                // Node ID for this device
   UC NetworkID[6];
   UC present                  :1;           // 0 - not present; 1 - present
-  UC reserved                 :7;
+  UC state                    :1;           // SuperSensor On/Off
+  UC reserved                 :6;
   UC subID;                                 // SubID
   UC type;                                  // Type of SuperSensor
   US token;
