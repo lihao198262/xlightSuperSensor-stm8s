@@ -4,6 +4,7 @@
 #include "xliNodeConfig.h"
 #include "ProtocolParser.h"
 #include "Uart2Dev.h"
+#include "relay_key.h"
 #include "infrared.h"
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
@@ -51,8 +52,15 @@ Connections:
 #define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
 
 // Choose Product Name & Type
+#ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
 #define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
+#else
+#define XLA_PRODUCT_NAME          "ZENREMOTE"
+#define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
+#endif
 
 // RF channel for the sensor net, 0-127
 #define RF24_CHANNEL	   		71
@@ -94,8 +102,9 @@ const UC RF24_BASE_RADIO_ID[ADDRESS_WIDTH] = {0x00,0x54,0x49,0x54,0x44};
 
 // Public variables
 Config_t gConfig;
-MyMessage_t msg;
-uint8_t *pMsg = (uint8_t *)&msg;
+MyMessage_t sndMsg, rcvMsg;
+uint8_t *psndMsg = (uint8_t *)&sndMsg;
+uint8_t *prcvMsg = (uint8_t *)&rcvMsg;
 bool gIsChanged = FALSE;
 uint8_t _uniqueID[UNIQUE_ID_LEN];
 
@@ -192,7 +201,7 @@ void SaveConfig()
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController
 void InitNodeAddress() {
   // Whether has preset node id
-  gConfig.nodeID = NODEID_KEYSIMULATOR;
+  gConfig.nodeID = XLA_PRODUCT_NODEID;
   memcpy(gConfig.NetworkID, RF24_BASE_RADIO_ID, ADDRESS_WIDTH);
 }
 
@@ -254,7 +263,7 @@ bool SendMyMessage() {
       
       mutex = 0;
       RF24L01_set_mode_TX();
-      RF24L01_write_payload(pMsg, PLOAD_WIDTH);
+      RF24L01_write_payload(psndMsg, PLOAD_WIDTH);
 
       WaitMutex(0x1FFFF);
       if (mutex == 1) {
@@ -423,6 +432,8 @@ int main( void ) {
   // Init Watchdog
   wwdg_init();
   
+  relay_key_init();
+  
   // Init sensors
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
   ADC1_PinInit();
@@ -557,7 +568,7 @@ INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
   if(RF24L01_is_data_available()) {
     //Packet was received
     RF24L01_clear_interrupts();
-    RF24L01_read_payload(pMsg, PLOAD_WIDTH);
+    RF24L01_read_payload(prcvMsg, PLOAD_WIDTH);
     bMsgReady = ParseProtocol();
     return;
   }

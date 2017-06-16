@@ -114,6 +114,9 @@
         <name>$PROJ_DIR$\Project\inc\ProtocolParser.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\relay_key.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\rf24l01.h</name>
       </file>
       <file>
@@ -154,6 +157,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\ProtocolParser.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\relay_key.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\rf24l01.c</name>
