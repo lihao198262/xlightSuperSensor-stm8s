@@ -3,6 +3,7 @@
 #include "MyMessage.h"
 #include "relay_key.h"
 #include "xliNodeConfig.h"
+#include "infrared.h"
 
 uint8_t bMsgReady = 0;
 
@@ -85,7 +86,7 @@ uint8_t ParseProtocol(){
     break;
     
   case C_PRESENTATION:
-    if( _sensor == S_ZENSENSOR ) {
+    if( _sensor == S_ZENREMOTE ) {
       if( _isAck ) {
         // Device/client got Response to Presentation message, ready to work
         gConfig.token = rcvMsg.payload.uiValue;
@@ -113,6 +114,7 @@ uint8_t ParseProtocol(){
     
   case C_SET:
     if( IS_MINE_SUBID(_sensor) && !_isAck ) {
+#ifdef ZENSENSOR        
       if( _type == V_STATUS ) {
         // set zensensor on/off
         _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
@@ -131,6 +133,43 @@ uint8_t ParseProtocol(){
           }
         }
       }
+#else
+      // Parsing payload
+      unsigned long buf[2];
+      switch(rcvMsg.payload.data[1]) {
+      case '1':
+        buf[0] = 0x00FF00FFL;
+        break;
+      case '2':
+        buf[0] = 0x00FF8877L;
+        break;
+      case '3':
+        buf[0] = 0x00FFC837L;
+        break;
+      case '4':
+        buf[0] = 0x00FF08F7L;
+        break;
+      case '5':
+        buf[0] = 0x00FF28D7L;
+        break;
+      case '6':
+        buf[0] = 0x00FF48B7L;
+        break;
+      case '7':
+        buf[0] = 0x00FF54ABL;
+        break;
+      case '8':
+        buf[0] = 0x00FF708FL;
+        break;
+      case '9':
+        buf[0] = 0x00FF946BL;
+        break;
+      default:
+        buf[0] = 0xFFFFFFFFL;
+        break;
+      }
+      Set_Send_Buf(buf, 1);
+#endif      
     }
     break;
   }
@@ -181,7 +220,12 @@ void Msg_RequestNodeID() {
 
 // Prepare device presentation message
 void Msg_Presentation() {
-  build(NODEID_GATEWAY, S_ZENSENSOR, C_PRESENTATION, gConfig.type, 1, 0); // S_LIGHT, S_ZENSENSOR
+#ifdef ZENSENSOR  
+  build(NODEID_GATEWAY, S_ZENSENSOR, C_PRESENTATION, gConfig.type, 1, 0);
+#else  
+  build(NODEID_GATEWAY, S_ZENREMOTE, C_PRESENTATION, gConfig.type, 1, 0);
+#endif
+
   moSetPayloadType(P_ULONG32);
   moSetLength(UNIQUE_ID_LEN);
   memcpy(sndMsg.payload.data, _uniqueID, UNIQUE_ID_LEN);

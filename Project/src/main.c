@@ -5,6 +5,7 @@
 #include "ProtocolParser.h"
 #include "Uart2Dev.h"
 #include "relay_key.h"
+#include "infrared.h"
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
 #include "ADC1Dev.h"
@@ -51,8 +52,15 @@ Connections:
 #define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
 
 // Choose Product Name & Type
+#ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
 #define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
+#else
+#define XLA_PRODUCT_NAME          "ZENREMOTE"
+#define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
+#endif
 
 // RF channel for the sensor net, 0-127
 #define RF24_CHANNEL	   		71
@@ -79,7 +87,7 @@ Connections:
 #define SEN_READ_PIR                    0x1FFF
 #define SEN_READ_PM25                   0xFFFF
 
-#define ONOFF_RESET_TIMES               3       // on / off times to reset device
+#define ONOFF_RESET_TIMES               30       // on / off times to reset device
 #define REGISTER_RESET_TIMES            30      // default 5, super large value for show only to avoid ID mess
 
 // Unique ID
@@ -193,7 +201,7 @@ void SaveConfig()
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController
 void InitNodeAddress() {
   // Whether has preset node id
-  gConfig.nodeID = NODEID_SUPERSENSOR;
+  gConfig.nodeID = XLA_PRODUCT_NODEID;
   memcpy(gConfig.NetworkID, RF24_BASE_RADIO_ID, ADDRESS_WIDTH);
 }
 
@@ -202,7 +210,7 @@ void LoadConfig()
 {
     // Load the most recent settings from FLASH
     Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != NODEID_SUPERSENSOR ) {
+    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != NODEID_KEYSIMULATOR ) {
       memset(&gConfig, 0x00, sizeof(gConfig));
       gConfig.version = XLA_VERSION;
       InitNodeAddress();
@@ -441,6 +449,7 @@ int main( void ) {
   // Init ADC
   ADC1_Config();
 #endif  
+  Infrared_Init();
   
   while(1) {
     // Go on only if NRF chip is presented
@@ -462,7 +471,7 @@ int main( void ) {
       
       // Feed the Watchdog
       feed_wwdg();
-      
+      IR_Send();
       if( gConfig.state ) {
         
         // Read sensors
