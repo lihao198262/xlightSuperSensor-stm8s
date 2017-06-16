@@ -104,6 +104,7 @@ uint8_t ParseProtocol(){
           return 1;
         } else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
           _OnOff = relay_get_key(rcvMsg.payload.data[0]);
+          Msg_Relay_Ack(_sender, _OnOff ? V_RELAY_ON : V_RELAY_OFF, rcvMsg.payload.data[0]);
           return 1;
         }
       }
@@ -125,6 +126,7 @@ uint8_t ParseProtocol(){
         for( uint8_t idx = 0; idx < miGetLength(); idx++ ) {
           _OnOff = relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON);
           if( _needAck ) {
+            Msg_Relay_Ack(_sender, _OnOff ? V_RELAY_ON : V_RELAY_OFF, rcvMsg.payload.data[idx]);
             SendMyMessage();
           }
         }
@@ -196,9 +198,11 @@ void Msg_DevOnOff(uint8_t _to) {
 }
 
 // Prepare relay key ACK message
+void Msg_Relay_Ack(uint8_t _to, uint8_t _type, uint8_t _key) {
   build(_to, gConfig.subID, C_REQ, _type, 0, 1);
   moSetLength(1);
   moSetPayloadType(P_BYTE);
+  sndMsg.payload.bValue = _key;
   bMsgReady = 1;
 }
 
