@@ -190,3 +190,42 @@ void Msg_SenPM25(uint16_t _value) {
   bMsgReady = 1;  
 }
 #endif
+
+#ifdef EN_SENSOR_DHT
+// Prepare DHT message
+/*
+type 0  ---- all
+type 1  ---- tem
+type 2  ---- hum
+*/
+void Msg_SenDHT(uint16_t dht_t,uint16_t dht_h,u8 type) {
+  if(type == 0)
+  {
+      build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
+      miSetPayloadType(P_BYTE);
+      miSetLength(4);
+      msg.payload.data[0] = dht_t/100;
+      msg.payload.data[1] = dht_t%100;
+      msg.payload.data[2] = dht_h/100;
+      msg.payload.data[3] = dht_h%100;    
+  }
+  else if (type == 1)
+  {
+      build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_TEMP, 0, 0);
+      miSetPayloadType(P_BYTE);
+      miSetLength(2);
+      msg.payload.data[0] = dht_t/100;
+      msg.payload.data[1] = dht_t%100;
+
+  }
+  else if (type == 2)
+  {
+      build(NODEID_GATEWAY, S_HUM, C_PRESENTATION, V_HUM, 0, 0);
+      miSetPayloadType(P_BYTE);
+      miSetLength(2);
+      msg.payload.data[0] = dht_h/100;
+      msg.payload.data[1] = dht_h%100; 
+  }
+  bMsgReady = 1; 
+}
+#endif
