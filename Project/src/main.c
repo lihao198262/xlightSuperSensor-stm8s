@@ -470,10 +470,10 @@ int main( void ) {
     gConfig.present = 0;
     RF24L01_init();
     while(!NRF24L01_Check())feed_wwdg();
-
+    
     // IRQ
     NRF2401_EnableIRQ();
-  
+    
     // Must establish connection firstly
     SayHelloToDevice(TRUE);
     gConfig.swTimes = 0;
@@ -551,47 +551,49 @@ int main( void ) {
           }
         }
 #endif
-     
+        
 #ifdef EN_SENSOR_DHT
-      /// Read DHT
-      if( gConfig.senMap & sensorDHT ) {
-        if( !bMsgReady && !dht_tick ) {
-          // Reset read timer
-          dht_tick = SEN_READ_DHT;
-          if( DHT_checkData() ) {
-            if( pre_dht_t != dht_tem_value && pre_dht_h != dht_hum_value) {
-            // Send detection message
-              pre_dht_t = dht_tem_value;
-              pre_dht_h = dht_hum_value;
-              Msg_SenDHT(dht_tem_value,dht_hum_value,0);   
+        /// Read DHT
+        if( gConfig.senMap & sensorDHT ) {
+          if( !bMsgReady && !dht_tick ) {
+            // Reset read timer
+            dht_tick = SEN_READ_DHT;
+            if( DHT_checkData() ) {
+              if( pre_dht_t != dht_tem_value && pre_dht_h != dht_hum_value) {
+                // Send detection message
+                pre_dht_t = dht_tem_value;
+                pre_dht_h = dht_hum_value;
+                Msg_SenDHT(dht_tem_value,dht_hum_value,0);   
+              }
+              else if(pre_dht_t != dht_tem_value)
+              {
+                pre_dht_t = dht_tem_value;
+                Msg_SenDHT(dht_tem_value,dht_hum_value,1);  
+              }
+              else if(pre_dht_h != dht_hum_value)
+              {
+                pre_dht_h = dht_hum_value;
+                Msg_SenDHT(dht_tem_value,dht_hum_value,2);  
+              }
             }
-            else if(pre_dht_t != dht_tem_value)
-            {
-              pre_dht_t = dht_tem_value;
-              Msg_SenDHT(dht_tem_value,dht_hum_value,1);  
-            }
-            else if(pre_dht_h != dht_hum_value)
-            {
-              pre_dht_h = dht_hum_value;
-              Msg_SenDHT(dht_tem_value,dht_hum_value,2);  
-            }
+          } else if( dht_tick > 0 ) {
+            dht_tick--;
           }
-        } else if( dht_tick > 0 ) {
-          dht_tick--;
         }
-      }
 #endif
-      
-      // Idle Tick
-      if( !bMsgReady ) {
-        mIdle_tick++;
-        // Check Keep Alive Timer
-        if( mIdle_tick == 0 ) {
-          if( ++mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
-            // Send DHT?
-            //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
+        
+        // Idle Tick
+        /*
+        if( !bMsgReady ) {
+          mIdle_tick++;
+          // Check Keep Alive Timer
+          if( mIdle_tick == 0 ) {
+            if( ++mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
+              // Send DHT?
+              //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
+            }
           }
-        }
+        }*/
         
       } // End of if( gConfig.state )
       
