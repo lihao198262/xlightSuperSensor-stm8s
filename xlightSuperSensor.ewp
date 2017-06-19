@@ -22,7 +22,7 @@
         <option>
           <name>GenCodeModel</name>
           <version>0</version>
-          <state>1</state>
+          <state>0</state>
         </option>
         <option>
           <name>GenDataModel</name>
@@ -61,7 +61,7 @@
         </option>
         <option>
           <name>GenRTConfigPath</name>
-          <state>$TOOLKIT_DIR$\LIB\dlstm8mmn.h</state>
+          <state>$TOOLKIT_DIR$\LIB\dlstm8smn.h</state>
         </option>
         <option>
           <name>GenLibInFormatter</name>
@@ -147,7 +147,7 @@
         </option>
         <option>
           <name>IccOptLevel</name>
-          <state>3</state>
+          <state>1</state>
         </option>
         <option>
           <name>IccOptStrategy</name>
@@ -156,12 +156,12 @@
         </option>
         <option>
           <name>IccOptLevelSlave</name>
-          <state>3</state>
+          <state>1</state>
         </option>
         <option>
           <name>IccOptAllowList</name>
           <version>0</version>
-          <state>111111</state>
+          <state>000000</state>
         </option>
         <option>
           <name>IccGenerateDebugInfo</name>
@@ -1649,6 +1649,9 @@
         <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_spi.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_tim1.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_tim2.c</name>
       </file>
       <file>
@@ -1676,10 +1679,16 @@
         <name>$PROJ_DIR$\Project\inc\ADC1Dev.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\infrared.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\MyMessage.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\ProtocolParser.h</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\inc\relay_key.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\rf24l01.h</name>
@@ -1718,10 +1727,16 @@
         <name>$PROJ_DIR$\Project\src\ADC1Dev.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\src\infrared.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\src\main.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\ProtocolParser.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\relay_key.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\rf24l01.c</name>

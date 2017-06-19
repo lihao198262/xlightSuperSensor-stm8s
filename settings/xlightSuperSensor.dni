@@ -9,7 +9,11 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=-1444808585
+<<<<<<< HEAD
+Checksum=1780312420
+=======
+Checksum=-1623406654
+>>>>>>> 73410b0bfbecaa4006187a59e77ceab9ff43904a
 [CallStack]
 ShowArgs=0
 [Disassembly]
@@ -19,12 +23,6 @@ LogEnabled=0
 GraphEnabled=0
 ShowTimeLog=1
 ShowTimeSum=1
-[Breakpoints]
-Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.203.5" 1 0 0 0 "" 0 ""
-Bp1=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.36.7" 1 0 0 0 "" 0 ""
-Bp2=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.86.5" 1 0 0 0 "" 0 ""
-Bp3=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.317.9" 1 0 0 0 "" 0 ""
-Count=4
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
@@ -32,6 +30,10 @@ Category=_ 0
 [TermIOLog]
 LoggingEnabled=_ 0
 LogFile=_ ""
+[Breakpoints]
+Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.209.5" 1 0 0 0 "" 0 ""
+Bp1=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.89.1" 1 0 0 0 "" 0 ""
+Count=2
 [Aliases]
 Count=0
 SuppressDialog=0

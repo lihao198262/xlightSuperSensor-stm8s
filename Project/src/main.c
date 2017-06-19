@@ -4,6 +4,8 @@
 #include "xliNodeConfig.h"
 #include "ProtocolParser.h"
 #include "Uart2Dev.h"
+#include "relay_key.h"
+#include "infrared.h"
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
 #include "ADC1Dev.h"
@@ -54,8 +56,15 @@ Connections:
 #define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
 
 // Choose Product Name & Type
+#ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
 #define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
+#else
+#define XLA_PRODUCT_NAME          "ZENREMOTE"
+#define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
+#endif
 
 // RF channel for the sensor net, 0-127
 #define RF24_CHANNEL	   		71
@@ -98,8 +107,9 @@ const UC RF24_BASE_RADIO_ID[ADDRESS_WIDTH] = {0x00,0x54,0x49,0x54,0x44};
 
 // Public variables
 Config_t gConfig;
-MyMessage_t msg;
-uint8_t *pMsg = (uint8_t *)&msg;
+MyMessage_t sndMsg, rcvMsg;
+uint8_t *psndMsg = (uint8_t *)&sndMsg;
+uint8_t *prcvMsg = (uint8_t *)&rcvMsg;
 bool gIsChanged = FALSE;
 uint8_t _uniqueID[UNIQUE_ID_LEN];
 
@@ -196,7 +206,7 @@ void SaveConfig()
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController
 void InitNodeAddress() {
   // Whether has preset node id
-  gConfig.nodeID = NODEID_SUPERSENSOR;
+  gConfig.nodeID = XLA_PRODUCT_NODEID;
   memcpy(gConfig.NetworkID, RF24_BASE_RADIO_ID, ADDRESS_WIDTH);
 }
 
@@ -205,7 +215,7 @@ void LoadConfig()
 {
     // Load the most recent settings from FLASH
     Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != NODEID_SUPERSENSOR ) {
+    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != NODEID_KEYSIMULATOR ) {
       memset(&gConfig, 0x00, sizeof(gConfig));
       gConfig.version = XLA_VERSION;
       InitNodeAddress();
@@ -228,6 +238,8 @@ void LoadConfig()
       gConfig.senMap |= sensorDUST;
 #endif
     }
+    // Start ZenSensor
+    gConfig.state = 1;
 }
 
 void UpdateNodeAddress(void) {
@@ -256,7 +268,7 @@ bool SendMyMessage() {
       
       mutex = 0;
       RF24L01_set_mode_TX();
-      RF24L01_write_payload(pMsg, PLOAD_WIDTH);
+      RF24L01_write_payload(psndMsg, PLOAD_WIDTH);
 
       WaitMutex(0x1FFFF);
       if (mutex == 1) {
@@ -431,6 +443,8 @@ int main( void ) {
   // Init Watchdog
   wwdg_init();
   
+  relay_key_init();
+  
   // Init sensors
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
   ADC1_PinInit();
@@ -449,6 +463,7 @@ int main( void ) {
   // Init ADC
   ADC1_Config();
 #endif  
+  Infrared_Init();
   
   while(1) {
     // Go on only if NRF chip is presented
@@ -470,69 +485,71 @@ int main( void ) {
       
       // Feed the Watchdog
       feed_wwdg();
-      
-      // Read sensors
+      IR_Send();
+      if( gConfig.state ) {
+        
+        // Read sensors
 #ifdef EN_SENSOR_PIR
-      /// Read PIR
-      if( gConfig.senMap & sensorPIR ) {
-        if( !bMsgReady && !pir_tick ) {
-          // Reset read timer
-          pir_tick = SEN_READ_PIR;
-          pir_st = pir_read();
-          if( pre_pir_st != pir_st ) {
-            // Send detection message
-            pre_pir_st = pir_st;
-            Msg_SenPIR(pre_pir_st);
+        /// Read PIR
+        if( gConfig.senMap & sensorPIR ) {
+          if( !bMsgReady && !pir_tick ) {
+            // Reset read timer
+            pir_tick = SEN_READ_PIR;
+            pir_st = pir_read();
+            if( pre_pir_st != pir_st ) {
+              // Send detection message
+              pre_pir_st = pir_st;
+              Msg_SenPIR(pre_pir_st);
+            }
+          } else if( pir_tick > 0 ) {
+            pir_tick--;
           }
-        } else if( pir_tick > 0 ) {
-          pir_tick--;
         }
-      }
 #endif
-
+        
 #ifdef EN_SENSOR_ALS
-      /// Read ALS
-      if( gConfig.senMap & sensorALS ) {
-        if( !bMsgReady && !als_tick ) {
-          // Reset read timer
-          als_tick = SEN_READ_ALS;
-          if( als_checkData() ) {
-            if( pre_als_value != als_value ) {
-              // Send brightness message
-              pre_als_value = als_value;
-              Msg_SenALS(pre_als_value);
+        /// Read ALS
+        if( gConfig.senMap & sensorALS ) {
+          if( !bMsgReady && !als_tick ) {
+            // Reset read timer
+            als_tick = SEN_READ_ALS;
+            if( als_checkData() ) {
+              if( pre_als_value != als_value ) {
+                // Send brightness message
+                pre_als_value = als_value;
+                Msg_SenALS(pre_als_value);
+              }
             }
+          } else if( als_tick > 0 ) {
+            als_tick--;
           }
-        } else if( als_tick > 0 ) {
-          als_tick--;
         }
-      }
 #endif
-      
+        
 #ifdef EN_SENSOR_PM25
-      if( gConfig.senMap & sensorDUST ) {
-        if( !bMsgReady && !pm25_tick ) {
-          pm25_tick = SEN_READ_PM25;
-          // Reset read timer
-          if( pm25_ready ) {
-            if( lv_pm2_5 != pm25_value ) {
-              lv_pm2_5 = pm25_value;
-              if( lv_pm2_5 < 5 ) lv_pm2_5 = 8;
-              // Send PM2.5 to Controller
-              Msg_SenPM25(lv_pm2_5);
-            } else if( pm25_alive ) {
-              pm25_alive = FALSE;
-              pm25_alivetick = 20;
-            } else if( --pm25_alivetick == 0 ) {
-              // Reset PM2.5 moudle or restart the node
-              mStatus = SYS_RESET;
-              pm25_init();
+        if( gConfig.senMap & sensorDUST ) {
+          if( !bMsgReady && !pm25_tick ) {
+            pm25_tick = SEN_READ_PM25;
+            // Reset read timer
+            if( pm25_ready ) {
+              if( lv_pm2_5 != pm25_value ) {
+                lv_pm2_5 = pm25_value;
+                if( lv_pm2_5 < 5 ) lv_pm2_5 = 8;
+                // Send PM2.5 to Controller
+                Msg_SenPM25(lv_pm2_5);
+              } else if( pm25_alive ) {
+                pm25_alive = FALSE;
+                pm25_alivetick = 20;
+              } else if( --pm25_alivetick == 0 ) {
+                // Reset PM2.5 moudle or restart the node
+                mStatus = SYS_RESET;
+                pm25_init();
+              }
             }
+          } else if( pm25_tick > 0 ) {
+            pm25_tick--;
           }
-        } else if( pm25_tick > 0 ) {
-          pm25_tick--;
         }
-      }
 #endif
      
 #ifdef EN_SENSOR_DHT
@@ -575,7 +592,8 @@ int main( void ) {
             //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
           }
         }
-      }
+        
+      } // End of if( gConfig.state )
       
       // Send message if ready
       SendMyMessage();
@@ -593,7 +611,7 @@ INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
   if(RF24L01_is_data_available()) {
     //Packet was received
     RF24L01_clear_interrupts();
-    RF24L01_read_payload(pMsg, PLOAD_WIDTH);
+    RF24L01_read_payload(prcvMsg, PLOAD_WIDTH);
     bMsgReady = ParseProtocol();
     return;
   }

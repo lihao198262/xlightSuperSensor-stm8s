@@ -75,6 +75,9 @@
         <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_spi.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_tim1.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\STM8S_StdPeriph_Driver\src\stm8s_tim2.c</name>
       </file>
       <file>
@@ -102,10 +105,16 @@
         <name>$PROJ_DIR$\Project\inc\ADC1Dev.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\infrared.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\MyMessage.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\ProtocolParser.h</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\inc\relay_key.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\rf24l01.h</name>
@@ -144,10 +153,16 @@
         <name>$PROJ_DIR$\Project\src\ADC1Dev.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\src\infrared.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\src\main.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\ProtocolParser.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\relay_key.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\rf24l01.c</name>
