@@ -23,6 +23,10 @@
 #include "sen_pm25.h"
 #endif
 
+#ifdef EN_SENSOR_DHT
+#include "sen_dht.h"
+#endif
+
 /*
 License: MIT
 
@@ -86,8 +90,9 @@ Connections:
 #define SEN_READ_ALS                    0xFFFF
 #define SEN_READ_PIR                    0x1FFF
 #define SEN_READ_PM25                   0xFFFF
+#define SEN_READ_DHT                    0xFFFF
 
-#define ONOFF_RESET_TIMES               30       // on / off times to reset device
+#define ONOFF_RESET_TIMES               3      // on / off times to reset device
 #define REGISTER_RESET_TIMES            30      // default 5, super large value for show only to avoid ID mess
 
 // Unique ID
@@ -409,6 +414,12 @@ int main( void ) {
    uint16_t pm25_tick = 0;
    uint8_t pm25_alivetick = 0;
 #endif   
+
+#ifdef EN_SENSOR_DHT
+   uint16_t pre_dht_t = 0;
+   uint16_t pre_dht_h = 0;
+   uint16_t dht_tick = 0;
+#endif   
       
   //After reset, the device restarts by default with the HSI clock divided by 8.
   //CLK_DeInit();
@@ -444,6 +455,9 @@ int main( void ) {
 #ifdef EN_SENSOR_PM25
   pm25_init();
 #endif
+/*#ifdef EN_SENSOR_DHT
+  dht_init();
+#endif*/
   
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC  
   // Init ADC
@@ -537,16 +551,45 @@ int main( void ) {
           }
         }
 #endif
-        
-        // Idle Tick
-        if( !bMsgReady ) {
-          mIdle_tick++;
-          // Check Keep Alive Timer
-          if( mIdle_tick == 0 ) {
-            if( ++mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
-              // Send DHT?
-              //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
+     
+#ifdef EN_SENSOR_DHT
+      /// Read DHT
+      if( gConfig.senMap & sensorDHT ) {
+        if( !bMsgReady && !dht_tick ) {
+          // Reset read timer
+          dht_tick = SEN_READ_DHT;
+          if( DHT_checkData() ) {
+            if( pre_dht_t != dht_tem_value && pre_dht_h != dht_hum_value) {
+            // Send detection message
+              pre_dht_t = dht_tem_value;
+              pre_dht_h = dht_hum_value;
+              Msg_SenDHT(dht_tem_value,dht_hum_value,0);   
             }
+            else if(pre_dht_t != dht_tem_value)
+            {
+              pre_dht_t = dht_tem_value;
+              Msg_SenDHT(dht_tem_value,dht_hum_value,1);  
+            }
+            else if(pre_dht_h != dht_hum_value)
+            {
+              pre_dht_h = dht_hum_value;
+              Msg_SenDHT(dht_tem_value,dht_hum_value,2);  
+            }
+          }
+        } else if( dht_tick > 0 ) {
+          dht_tick--;
+        }
+      }
+#endif
+      
+      // Idle Tick
+      if( !bMsgReady ) {
+        mIdle_tick++;
+        // Check Keep Alive Timer
+        if( mIdle_tick == 0 ) {
+          if( ++mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
+            // Send DHT?
+            //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
           }
         }
         
