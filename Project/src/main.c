@@ -4,6 +4,7 @@
 #include "xliNodeConfig.h"
 #include "ProtocolParser.h"
 #include "Uart2Dev.h"
+#include "timer_4.h"
 #include "relay_key.h"
 #include "infrared.h"
 
@@ -83,18 +84,18 @@ Connections:
 #define SYS_RUNNING                     5
 
 // Keep alive message interval, around 6 seconds
-#define RTE_TM_KEEP_ALIVE               0x02FF
+#define RTE_TM_KEEP_ALIVE               500    // about 5s (500 * 10ms)
 #define MAX_RF_FAILED_TIME              10      // Reset RF module when reach max failed times of sending
 
 // Sensor reading duration
-#define SEN_READ_ALS                    0xFFFF
-#define SEN_READ_PIR                    0x1FFF
-#define SEN_READ_PM25                   0xFFFF
-#define SEN_READ_DHT                    0xFFFF
+#define SEN_READ_ALS                    200    // about 2s (200 * 10ms)
+#define SEN_READ_PIR                    10     // about 100ms (10 * 10ms)
+#define SEN_READ_PM25                   400    // about 4s (400 * 10ms)
+#define SEN_READ_DHT                    300    // about 3s (300 * 10ms)
 
-#define ONOFF_RESET_TIMES               3      // on / off times to reset device
+#define ONOFF_RESET_TIMES               3       // on / off times to reset device
 #define REGISTER_RESET_TIMES            30      // default 5, super large value for show only to avoid ID mess
-
+  
 // Unique ID
 #if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
   #define     UNIQUE_ID_ADDRESS         (0x48CD)
@@ -121,6 +122,23 @@ uint8_t mutex = 0;
 // Keep Alive Timer
 uint16_t mTimerKeepAlive = 0;
 uint8_t m_cntRFSendFailed = 0;
+
+
+#ifdef EN_SENSOR_ALS
+   uint16_t als_tick = 0;
+#endif
+
+#ifdef EN_SENSOR_PIR
+   uint16_t pir_tick = 0;
+#endif
+   
+#ifdef EN_SENSOR_PM25       
+   uint16_t pm25_tick = 0;
+#endif 
+
+#ifdef EN_SENSOR_DHT       
+   uint16_t dht_tick = 0;
+#endif
 
 // Initialize Window Watchdog
 void wwdg_init() {
@@ -215,7 +233,7 @@ void LoadConfig()
 {
     // Load the most recent settings from FLASH
     Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != NODEID_KEYSIMULATOR ) {
+    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != XLA_PRODUCT_NODEID ) {
       memset(&gConfig, 0x00, sizeof(gConfig));
       gConfig.version = XLA_VERSION;
       InitNodeAddress();
@@ -240,6 +258,9 @@ void LoadConfig()
     }
     // Start ZenSensor
     gConfig.state = 1;
+    
+    // Engineering code
+    gConfig.senMap |= sensorDHT;
 }
 
 void UpdateNodeAddress(void) {
@@ -400,25 +421,21 @@ int main( void ) {
 
 #ifdef EN_SENSOR_ALS
    uint8_t pre_als_value = 0;
-   uint16_t als_tick = 0;
 #endif
 
 #ifdef EN_SENSOR_PIR
    bool pre_pir_st = FALSE;
    bool pir_st;
-   uint16_t pir_tick = 0;
 #endif
    
 #ifdef EN_SENSOR_PM25       
    uint16_t lv_pm2_5 = 0;
-   uint16_t pm25_tick = 0;
    uint8_t pm25_alivetick = 0;
 #endif   
 
 #ifdef EN_SENSOR_DHT
    uint16_t pre_dht_t = 0;
    uint16_t pre_dht_h = 0;
-   uint16_t dht_tick = 0;
 #endif   
       
   //After reset, the device restarts by default with the HSI clock divided by 8.
@@ -462,8 +479,15 @@ int main( void ) {
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC  
   // Init ADC
   ADC1_Config();
-#endif  
+#endif 
+
+  // Init timer
+  TIM4_10ms_handler = tmrProcess;
+  Time4_Init();
+  
+#ifndef EN_SENSOR_DHT  
   Infrared_Init();
+#endif  
   
   while(1) {
     // Go on only if NRF chip is presented
@@ -480,29 +504,30 @@ int main( void ) {
     gIsChanged = TRUE;
     SaveConfig();
     
-    uint8_t mIdle_tick = 0;
     while (mStatus == SYS_RUNNING) {
       
       // Feed the Watchdog
       feed_wwdg();
+      
+#ifndef EN_SENSOR_DHT  
       IR_Send();
+#endif
+      
       if( gConfig.state ) {
         
         // Read sensors
 #ifdef EN_SENSOR_PIR
         /// Read PIR
         if( gConfig.senMap & sensorPIR ) {
-          if( !bMsgReady && !pir_tick ) {
-            // Reset read timer
-            pir_tick = SEN_READ_PIR;
+          if( !bMsgReady && pir_tick > SEN_READ_PIR ) {
             pir_st = pir_read();
             if( pre_pir_st != pir_st ) {
+              // Reset read timer
+              pir_tick = 0;
               // Send detection message
               pre_pir_st = pir_st;
               Msg_SenPIR(pre_pir_st);
             }
-          } else if( pir_tick > 0 ) {
-            pir_tick--;
           }
         }
 #endif
@@ -510,29 +535,27 @@ int main( void ) {
 #ifdef EN_SENSOR_ALS
         /// Read ALS
         if( gConfig.senMap & sensorALS ) {
-          if( !bMsgReady && !als_tick ) {
-            // Reset read timer
-            als_tick = SEN_READ_ALS;
-            if( als_checkData() ) {
+          if( !bMsgReady && als_tick > SEN_READ_ALS ) {
+            if( als_ready ) {
               if( pre_als_value != als_value ) {
+                // Reset read timer
+                als_tick = 0;
                 // Send brightness message
                 pre_als_value = als_value;
                 Msg_SenALS(pre_als_value);
               }
             }
-          } else if( als_tick > 0 ) {
-            als_tick--;
           }
         }
 #endif
         
 #ifdef EN_SENSOR_PM25
         if( gConfig.senMap & sensorDUST ) {
-          if( !bMsgReady && !pm25_tick ) {
-            pm25_tick = SEN_READ_PM25;
-            // Reset read timer
+          if( !bMsgReady && pm25_tick > SEN_READ_PM25 ) {
             if( pm25_ready ) {
               if( lv_pm2_5 != pm25_value ) {
+                // Reset read timer
+                pm25_tick = 0;
                 lv_pm2_5 = pm25_value;
                 if( lv_pm2_5 < 5 ) lv_pm2_5 = 8;
                 // Send PM2.5 to Controller
@@ -546,8 +569,6 @@ int main( void ) {
                 pm25_init();
               }
             }
-          } else if( pm25_tick > 0 ) {
-            pm25_tick--;
           }
         }
 #endif
@@ -555,29 +576,30 @@ int main( void ) {
 #ifdef EN_SENSOR_DHT
         /// Read DHT
         if( gConfig.senMap & sensorDHT ) {
-          if( !bMsgReady && !dht_tick ) {
-            // Reset read timer
-            dht_tick = SEN_READ_DHT;
-            if( DHT_checkData() ) {
-              if( pre_dht_t != dht_tem_value && pre_dht_h != dht_hum_value) {
-                // Send detection message
-                pre_dht_t = dht_tem_value;
-                pre_dht_h = dht_hum_value;
-                Msg_SenDHT(dht_tem_value,dht_hum_value,0);   
-              }
-              else if(pre_dht_t != dht_tem_value)
-              {
-                pre_dht_t = dht_tem_value;
-                Msg_SenDHT(dht_tem_value,dht_hum_value,1);  
-              }
-              else if(pre_dht_h != dht_hum_value)
-              {
-                pre_dht_h = dht_hum_value;
-                Msg_SenDHT(dht_tem_value,dht_hum_value,2);  
+          DHT_checkData();
+          if( !bMsgReady && dht_tick > SEN_READ_DHT ) {
+            if( dht_tem_ready || dht_hum_ready ) {
+              if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) ) {
+                // Reset read timer
+                dht_tick = 0;
+                if( dht_tem_ready && dht_hum_ready && pre_dht_t != dht_tem_value && pre_dht_h != dht_hum_value ) {
+                  // Send detection message
+                  pre_dht_t = dht_tem_value;
+                  pre_dht_h = dht_hum_value;
+                  Msg_SenDHT(dht_tem_value,dht_hum_value, 0);   
+                }
+                else if(dht_tem_ready && pre_dht_t != dht_tem_value)
+                {
+                  pre_dht_t = dht_tem_value;
+                  Msg_SenDHT(dht_tem_value,dht_hum_value, 1);  
+                }
+                else if(dht_hum_ready && pre_dht_h != dht_hum_value)
+                {
+                  pre_dht_h = dht_hum_value;
+                  Msg_SenDHT(dht_tem_value,dht_hum_value, 2);  
+                }
               }
             }
-          } else if( dht_tick > 0 ) {
-            dht_tick--;
           }
         }
 #endif
@@ -585,15 +607,12 @@ int main( void ) {
         // Idle Tick
         /*
         if( !bMsgReady ) {
-          mIdle_tick++;
           // Check Keep Alive Timer
-          if( mIdle_tick == 0 ) {
-            if( ++mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
-              // Send DHT?
-              //Msg_DevBrightness(NODEID_GATEWAY, NODEID_GATEWAY);
-            }
+          if( mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
+            Msg_DevBrightness(NODEID_GATEWAY);
           }
-        }*/
+        }
+        */
         
       } // End of if( gConfig.state )
       
@@ -607,6 +626,25 @@ int main( void ) {
       // mStatus = SYS_RESET, if timeout or received a value 3 times consecutively
     }
   }
+}
+
+// Execute timer operations
+void tmrProcess() {
+  // Tick
+  mTimerKeepAlive++;
+#ifdef EN_SENSOR_ALS
+   als_tick++;
+   als_checkData();
+#endif
+#ifdef EN_SENSOR_PIR
+   pir_st++;
+#endif
+#ifdef EN_SENSOR_PM25
+   pm25_tick++;
+#endif
+#ifdef EN_SENSOR_DHT       
+   dht_tick++;
+#endif   
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {

@@ -14,11 +14,6 @@ typedef enum
   RESULT_ERRCHKSUM =    2,      // Error check sum
 } RESULT;
 
-RESULT DHT_GetData(u16 * t, u16 * h);
-u8 DHT_ReadData(u8 *data);
-u8 DHT_CheckSum(u8 * data);
-
-
 bool DHT_checkData();
 
 extern bool dht_tem_ready;

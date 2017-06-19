@@ -8,6 +8,7 @@ uint16_t TIM4_TimingDelay = 0;
 uint8_t TIM4_TimingDelayUs = 0;
 
 TM4_CallBack_t TIM4_1ms_handler = NULL;
+TM4_CallBack_t TIM4_5ms_handler = NULL;
 TM4_CallBack_t TIM4_10ms_handler = NULL;
 
 void Time4_Init(void) {
@@ -20,21 +21,6 @@ void Time4_Init(void) {
   TIM4_Cmd(ENABLE);
 }
 
-/*INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23)
-{
-  if( TIM4_1ms_handler ) (*TIM4_1ms_handler)();
-  
-  if(TIM4_Timer10ms > 0) {
-    TIM4_Timer10ms--;
-  } else {
-    // Reset and go
-    TIM4_Timer10ms = 10;
-    if( TIM4_10ms_handler ) (*TIM4_10ms_handler)();
-  }
-
-  TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
-}*/
-
 INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23)
 { 
   if(TIM4_TimingDelay > 0)
@@ -46,8 +32,24 @@ INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23)
   {
     TIM4_TimingDelayUs--;
   }
-  TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
-  if(TIM4_TimingDelay == 0 && TIM4_TimingDelayUs == 0)
+
+  // Timer callbacks
+  if( TIM4_1ms_handler ) (*TIM4_1ms_handler)();
+  
+  if(TIM4_Timer10ms > 0) {
+    TIM4_Timer10ms--;
+    if( TIM4_Timer10ms % 5 == 2 ) {
+      if( TIM4_5ms_handler ) (*TIM4_5ms_handler)();
+    }
+  } else {
+    // Reset and go
+    TIM4_Timer10ms = 10;
+    if( TIM4_10ms_handler ) (*TIM4_10ms_handler)();
+  }
+
+  TIM4_ClearITPendingBit(TIM4_IT_UPDATE);  
+
+  if(TIM4_TimingDelay == 0 && TIM4_TimingDelayUs == 0 && TIM4_1ms_handler == NULL && TIM4_5ms_handler == NULL && TIM4_10ms_handler == NULL )
   {
     TIM4_Cmd(DISABLE);
   }

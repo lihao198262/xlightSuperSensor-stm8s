@@ -86,7 +86,11 @@ uint8_t ParseProtocol(){
     break;
     
   case C_PRESENTATION:
+#ifdef ZENSENSOR    
+    if( _sensor == S_ZENSENSOR ) {
+#else      
     if( _sensor == S_ZENREMOTE ) {
+#endif      
       if( _isAck ) {
         // Device/client got Response to Presentation message, ready to work
         gConfig.token = rcvMsg.payload.uiValue;
@@ -220,7 +224,7 @@ void Msg_RequestNodeID() {
 
 // Prepare device presentation message
 void Msg_Presentation() {
-#ifdef ZENSENSOR  
+#ifdef ZENSENSOR
   build(NODEID_GATEWAY, S_ZENSENSOR, C_PRESENTATION, gConfig.type, 1, 0);
 #else  
   build(NODEID_GATEWAY, S_ZENREMOTE, C_PRESENTATION, gConfig.type, 1, 0);
