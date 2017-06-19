@@ -24,6 +24,10 @@ u16 dht_mvHumData[DHT_MA_NUM] = {0};
 u32 dht_tem_mvSum = 0;
 u32 dht_hum_mvSum = 0;
 
+RESULT DHT_GetData(u16 * t, u16 * h);
+u8 DHT_ReadData(u8 *data);
+u8 DHT_CheckSum(u8 * data);
+
 bool DHT_checkData()
 {
   u16 newTemData = 0;
