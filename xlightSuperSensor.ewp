@@ -190,6 +190,7 @@
         <option>
           <name>CCDefines</name>
           <state>STM8S105</state>
+          <state>ZENSENSOR</state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -1697,6 +1698,9 @@
         <name>$PROJ_DIR$\Project\inc\sen_als.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\sen_dht.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\sen_pir.h</name>
       </file>
       <file>
@@ -1740,6 +1744,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\sen_als.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\sen_dht.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\sen_pir.c</name>

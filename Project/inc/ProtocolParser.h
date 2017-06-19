@@ -26,4 +26,8 @@ void Msg_SenPIR(bool _sw);
 void Msg_SenPM25(uint16_t _value);
 #endif
 
+#ifdef EN_SENSOR_DHT
+void Msg_SenDHT(uint16_t dht_t,uint16_t dht_h,u8 type);
+#endif
+
 #endif /* __PROTOCOL_PARSER_H */

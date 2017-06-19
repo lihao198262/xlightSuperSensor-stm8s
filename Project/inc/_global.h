@@ -9,7 +9,7 @@
 /* Exported types ------------------------------------------------------------*/
 // Include Sensors
 /// Comment off line to disable sensor
-//#define EN_SENSOR_ALS
+#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
 #define EN_SENSOR_DHT
@@ -84,6 +84,7 @@ extern uint8_t _uniqueID[UNIQUE_ID_LEN];
 bool isIdentityEqual(const UC *pId1, const UC *pId2, UC nLen);
 void GotNodeID();
 void GotPresented();
+void tmrProcess();
 
 #define IS_MINE_SUBID(nSID)        ((nSID) == 0 || ((nSID) & gConfig.subID))
 

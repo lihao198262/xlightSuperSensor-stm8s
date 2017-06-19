@@ -86,7 +86,11 @@ uint8_t ParseProtocol(){
     break;
     
   case C_PRESENTATION:
+#ifdef ZENSENSOR    
+    if( _sensor == S_ZENSENSOR ) {
+#else      
     if( _sensor == S_ZENREMOTE ) {
+#endif      
       if( _isAck ) {
         // Device/client got Response to Presentation message, ready to work
         gConfig.token = rcvMsg.payload.uiValue;
@@ -220,7 +224,7 @@ void Msg_RequestNodeID() {
 
 // Prepare device presentation message
 void Msg_Presentation() {
-#ifdef ZENSENSOR  
+#ifdef ZENSENSOR
   build(NODEID_GATEWAY, S_ZENSENSOR, C_PRESENTATION, gConfig.type, 1, 0);
 #else  
   build(NODEID_GATEWAY, S_ZENREMOTE, C_PRESENTATION, gConfig.type, 1, 0);
@@ -281,5 +285,44 @@ void Msg_SenPM25(uint16_t _value) {
   sndMsg.payload.data[0] = _value % 256;
   sndMsg.payload.data[1] = _value / 256;
   bMsgReady = 1;  
+}
+#endif
+
+#ifdef EN_SENSOR_DHT
+// Prepare DHT message
+/*
+type 0  ---- all
+type 1  ---- tem
+type 2  ---- hum
+*/
+void Msg_SenDHT(uint16_t dht_t,uint16_t dht_h,u8 type) {
+  if(type == 0)
+  {
+      build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
+      moSetPayloadType(P_BYTE);
+      moSetLength(4);
+      sndMsg.payload.data[0] = dht_t/100;
+      sndMsg.payload.data[1] = dht_t%100;
+      sndMsg.payload.data[2] = dht_h/100;
+      sndMsg.payload.data[3] = dht_h%100;    
+  }
+  else if (type == 1)
+  {
+      build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_TEMP, 0, 0);
+      moSetPayloadType(P_BYTE);
+      moSetLength(2);
+      sndMsg.payload.data[0] = dht_t/100;
+      sndMsg.payload.data[1] = dht_t%100;
+
+  }
+  else if (type == 2)
+  {
+      build(NODEID_GATEWAY, S_HUM, C_PRESENTATION, V_HUM, 0, 0);
+      moSetPayloadType(P_BYTE);
+      moSetLength(2);
+      sndMsg.payload.data[0] = dht_h/100;
+      sndMsg.payload.data[1] = dht_h%100; 
+  }
+  bMsgReady = 1; 
 }
 #endif
