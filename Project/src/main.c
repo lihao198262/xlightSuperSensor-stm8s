@@ -92,6 +92,7 @@ Connections:
 #define SEN_READ_PIR                    10     // about 100ms (10 * 10ms)
 #define SEN_READ_PM25                   400    // about 4s (400 * 10ms)
 #define SEN_READ_DHT                    300    // about 3s (300 * 10ms)
+#define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 #define ONOFF_RESET_TIMES               3       // on / off times to reset device
 #define REGISTER_RESET_TIMES            30      // default 5, super large value for show only to avoid ID mess
@@ -138,6 +139,7 @@ uint8_t m_cntRFSendFailed = 0;
 
 #ifdef EN_SENSOR_DHT       
    uint16_t dht_tick = 0;
+   uint16_t dht_collect_tick = 0;
 #endif
 
 // Initialize Window Watchdog
@@ -485,7 +487,9 @@ int main( void ) {
   TIM4_10ms_handler = tmrProcess;
   Time4_Init();
   
-#ifndef EN_SENSOR_DHT  
+#ifdef EN_SENSOR_DHT
+  DHT_init();
+#else 
   Infrared_Init();
 #endif  
   
@@ -509,7 +513,7 @@ int main( void ) {
       // Feed the Watchdog
       feed_wwdg();
       
-#ifndef EN_SENSOR_DHT  
+#ifndef EN_SENSOR_DHT
       IR_Send();
 #endif
       
@@ -576,7 +580,12 @@ int main( void ) {
 #ifdef EN_SENSOR_DHT
         /// Read DHT
         if( gConfig.senMap & sensorDHT ) {
-          DHT_checkData();
+          // Collect Data
+          if( dht_collect_tick >= SEN_COLLECT_DHT ) {
+            dht_collect_tick = 0;
+            DHT_checkData();
+          }
+          // Read & Send Data
           if( !bMsgReady && dht_tick > SEN_READ_DHT ) {
             if( dht_tem_ready || dht_hum_ready ) {
               if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) ) {
@@ -644,6 +653,7 @@ void tmrProcess() {
 #endif
 #ifdef EN_SENSOR_DHT       
    dht_tick++;
+   dht_collect_tick++;
 #endif   
 }
 
