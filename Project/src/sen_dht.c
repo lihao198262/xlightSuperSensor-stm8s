@@ -24,7 +24,8 @@ u8 wait_high(uint16_t timeout)
   return 0;
 }
 
-#define DHT_MA_NUM             20
+#define DHT_TEM_MA_NUM         10
+#define DHT_HUM_MA_NUM         50
 #define DHT_TEM_MAX            50
 #define DHT_HUM_MAX            90
 
@@ -39,8 +40,8 @@ u16 dht_hum_value;
 u8 dht_tem_mvPtr = 0;
 u8 dht_hum_mvPtr = 0;
 
-u16 dht_mvTemData[DHT_MA_NUM] = {0};
-u16 dht_mvHumData[DHT_MA_NUM] = {0};
+u16 dht_mvTemData[DHT_TEM_MA_NUM] = {0};
+u16 dht_mvHumData[DHT_HUM_MA_NUM] = {0};
 u32 dht_tem_mvSum = 0;
 u32 dht_hum_mvSum = 0;
 
@@ -66,8 +67,8 @@ void DHT_init()
   dht_hum_value = 0;
   dht_tem_ready = FALSE;
   dht_hum_ready = FALSE;  
-  memset(dht_mvTemData, 0x00, sizeof(u16) * DHT_MA_NUM);
-  memset(dht_mvHumData, 0x00, sizeof(u16) * DHT_MA_NUM);
+  memset(dht_mvTemData, 0x00, sizeof(u16) * DHT_TEM_MA_NUM);
+  memset(dht_mvHumData, 0x00, sizeof(u16) * DHT_HUM_MA_NUM);
   
   // Init Timer
   TIM2_Init();
@@ -110,13 +111,13 @@ bool DHT_checkData()
         dht_tem_mvSum -= dht_mvTemData[dht_tem_mvPtr];
         dht_mvTemData[dht_tem_mvPtr] = newTemData;
       }  
-      dht_tem_mvPtr = (dht_tem_mvPtr + 1) % DHT_MA_NUM;
+      dht_tem_mvPtr = (dht_tem_mvPtr + 1) % DHT_TEM_MA_NUM;
       if( newHumData != dht_mvHumData[dht_hum_mvPtr] ) {
         dht_hum_mvSum += newHumData;
         dht_hum_mvSum -= dht_mvHumData[dht_hum_mvPtr];
         dht_mvHumData[dht_hum_mvPtr] = newHumData;
       }  
-      dht_hum_mvPtr = (dht_hum_mvPtr + 1) % DHT_MA_NUM;
+      dht_hum_mvPtr = (dht_hum_mvPtr + 1) % DHT_HUM_MA_NUM;
       if( !dht_tem_ready ) {
         dht_tem_ready = (dht_tem_mvPtr == 0);
       }
@@ -125,11 +126,11 @@ bool DHT_checkData()
       }
       if( dht_tem_ready )
       {
-        dht_tem_value = dht_tem_mvSum / DHT_MA_NUM;
+        dht_tem_value = dht_tem_mvSum / DHT_TEM_MA_NUM;
       }
       if( dht_hum_ready ) 
       {
-        dht_hum_value = dht_hum_mvSum / DHT_MA_NUM;
+        dht_hum_value = dht_hum_mvSum / DHT_HUM_MA_NUM;
       }
   }
   return dht_tem_ready || dht_hum_ready;
