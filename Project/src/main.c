@@ -16,6 +16,10 @@
 #include "sen_als.h"
 #endif
 
+#ifdef EN_SENSOR_MIC
+#include "sen_mic.h"
+#endif
+
 #ifdef EN_SENSOR_PIR
 #include "sen_pir.h"
 #endif
@@ -89,9 +93,11 @@ Connections:
 
 // Sensor reading duration
 #define SEN_READ_ALS                    200    // about 2s (200 * 10ms)
+#define SEN_READ_MIC                    200    // about 2s (200 * 10ms)
 #define SEN_READ_PIR                    10     // about 100ms (10 * 10ms)
 #define SEN_READ_PM25                   400    // about 4s (400 * 10ms)
 #define SEN_READ_DHT                    300    // about 3s (300 * 10ms)
+#define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 #define ONOFF_RESET_TIMES               3       // on / off times to reset device
 #define REGISTER_RESET_TIMES            30      // default 5, super large value for show only to avoid ID mess
@@ -128,6 +134,10 @@ uint8_t m_cntRFSendFailed = 0;
    uint16_t als_tick = 0;
 #endif
 
+#ifdef EN_SENSOR_ALS
+   uint16_t mic_tick = 0;
+#endif
+   
 #ifdef EN_SENSOR_PIR
    uint16_t pir_tick = 0;
 #endif
@@ -138,6 +148,7 @@ uint8_t m_cntRFSendFailed = 0;
 
 #ifdef EN_SENSOR_DHT       
    uint16_t dht_tick = 0;
+   uint16_t dht_collect_tick = 0;
 #endif
 
 // Initialize Window Watchdog
@@ -246,6 +257,9 @@ void LoadConfig()
 #ifdef EN_SENSOR_ALS
       gConfig.senMap |= sensorALS;
 #endif
+#ifdef EN_SENSOR_MIC
+      gConfig.senMap |= sensorMIC;
+#endif
 #ifdef EN_SENSOR_PIR
       gConfig.senMap |= sensorPIR;
 #endif
@@ -260,6 +274,8 @@ void LoadConfig()
     gConfig.state = 1;
     
     // Engineering code
+    gConfig.senMap |= sensorALS;
+    gConfig.senMap |= sensorMIC;
     gConfig.senMap |= sensorDHT;
 }
 
@@ -423,6 +439,10 @@ int main( void ) {
    uint8_t pre_als_value = 0;
 #endif
 
+#ifdef EN_SENSOR_MIC
+   uint16_t pre_mic_value = 0;
+#endif
+   
 #ifdef EN_SENSOR_PIR
    bool pre_pir_st = FALSE;
    bool pir_st;
@@ -485,7 +505,9 @@ int main( void ) {
   TIM4_10ms_handler = tmrProcess;
   Time4_Init();
   
-#ifndef EN_SENSOR_DHT  
+#ifdef EN_SENSOR_DHT
+  DHT_init();
+#else 
   Infrared_Init();
 #endif  
   
@@ -509,7 +531,7 @@ int main( void ) {
       // Feed the Watchdog
       feed_wwdg();
       
-#ifndef EN_SENSOR_DHT  
+#ifndef EN_SENSOR_DHT
       IR_Send();
 #endif
       
@@ -548,6 +570,23 @@ int main( void ) {
           }
         }
 #endif
+
+#ifdef EN_SENSOR_MIC
+        /// Read MIC
+        if( gConfig.senMap & sensorMIC ) {
+          if( !bMsgReady && mic_tick > SEN_READ_MIC ) {
+            if( mic_ready ) {
+              if( pre_mic_value != mic_value ) {
+                // Reset read timer
+                mic_tick = 0;
+                // Send brightness message
+                pre_mic_value = mic_value;
+                Msg_SenMIC(pre_mic_value);
+              }
+            }
+          }
+        }
+#endif
         
 #ifdef EN_SENSOR_PM25
         if( gConfig.senMap & sensorDUST ) {
@@ -576,7 +615,12 @@ int main( void ) {
 #ifdef EN_SENSOR_DHT
         /// Read DHT
         if( gConfig.senMap & sensorDHT ) {
-          DHT_checkData();
+          // Collect Data
+          if( dht_collect_tick >= SEN_COLLECT_DHT ) {
+            dht_collect_tick = 0;
+            DHT_checkData();
+          }
+          // Read & Send Data
           if( !bMsgReady && dht_tick > SEN_READ_DHT ) {
             if( dht_tem_ready || dht_hum_ready ) {
               if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) ) {
@@ -635,6 +679,10 @@ void tmrProcess() {
 #ifdef EN_SENSOR_ALS
    als_tick++;
    als_checkData();
+#ifdef EN_SENSOR_MIC
+   mic_tick++;
+   mic_checkData();
+#endif
 #endif
 #ifdef EN_SENSOR_PIR
    pir_st++;
@@ -644,6 +692,7 @@ void tmrProcess() {
 #endif
 #ifdef EN_SENSOR_DHT       
    dht_tick++;
+   dht_collect_tick++;
 #endif   
 }
 

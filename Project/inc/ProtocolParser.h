@@ -18,6 +18,10 @@ void Msg_Relay_Ack(uint8_t _to, uint8_t _type, uint8_t _state);
 void Msg_SenALS(uint8_t _value);
 #endif
 
+#ifdef EN_SENSOR_ALS
+void Msg_SenMIC(uint16_t _value);
+#endif
+
 #ifdef EN_SENSOR_PIR
 void Msg_SenPIR(bool _sw);
 #endif

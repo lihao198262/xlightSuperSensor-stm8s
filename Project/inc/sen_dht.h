@@ -14,6 +14,7 @@ typedef enum
   RESULT_ERRCHKSUM =    2,      // Error check sum
 } RESULT;
 
+void DHT_init();
 bool DHT_checkData();
 
 extern bool dht_tem_ready;
