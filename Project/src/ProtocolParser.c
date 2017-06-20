@@ -118,8 +118,7 @@ uint8_t ParseProtocol(){
     
   case C_SET:
     if( IS_MINE_SUBID(_sensor) && !_isAck ) {
-#ifdef ZENSENSOR        
-      if( _type == V_STATUS ) {
+      if( _type == V_STATUS && gConfig.nodeID == NODEID_SUPERSENSOR ) {
         // set zensensor on/off
         _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
         gConfig.state = _OnOff;
@@ -136,44 +135,43 @@ uint8_t ParseProtocol(){
             SendMyMessage();
           }
         }
+      } else {
+        // Parsing payload
+        unsigned long buf[2];
+        switch(rcvMsg.payload.data[1]) {
+        case '1':
+          buf[0] = 0x00FF00FFL;
+          break;
+        case '2':
+          buf[0] = 0x00FF8877L;
+          break;
+        case '3':
+          buf[0] = 0x00FFC837L;
+          break;
+        case '4':
+          buf[0] = 0x00FF08F7L;
+          break;
+        case '5':
+          buf[0] = 0x00FF28D7L;
+          break;
+        case '6':
+          buf[0] = 0x00FF48B7L;
+          break;
+        case '7':
+          buf[0] = 0x00FF54ABL;
+          break;
+        case '8':
+          buf[0] = 0x00FF708FL;
+          break;
+        case '9':
+          buf[0] = 0x00FF946BL;
+          break;
+        default:
+          buf[0] = 0xFFFFFFFFL;
+          break;
+        }
+        Set_Send_Buf(buf, 1);
       }
-#else
-      // Parsing payload
-      unsigned long buf[2];
-      switch(rcvMsg.payload.data[1]) {
-      case '1':
-        buf[0] = 0x00FF00FFL;
-        break;
-      case '2':
-        buf[0] = 0x00FF8877L;
-        break;
-      case '3':
-        buf[0] = 0x00FFC837L;
-        break;
-      case '4':
-        buf[0] = 0x00FF08F7L;
-        break;
-      case '5':
-        buf[0] = 0x00FF28D7L;
-        break;
-      case '6':
-        buf[0] = 0x00FF48B7L;
-        break;
-      case '7':
-        buf[0] = 0x00FF54ABL;
-        break;
-      case '8':
-        buf[0] = 0x00FF708FL;
-        break;
-      case '9':
-        buf[0] = 0x00FF946BL;
-        break;
-      default:
-        buf[0] = 0xFFFFFFFFL;
-        break;
-      }
-      Set_Send_Buf(buf, 1);
-#endif      
     }
     break;
   }
