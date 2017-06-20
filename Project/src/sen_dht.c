@@ -1,8 +1,26 @@
-
 //adapted from http://www.amobbs.com/thread-5517880-1-1.html?_dsign=d9eb7efa//
 #include "sen_dht.h"
 #include "timer_4.h"
-
+static uint16_t collect_times = 0;
+static uint16_t collect_times_success = 0;
+static uint16_t collect_times_fail = 0;
+static uint16_t dht11_timeout;
+#define F_MASTER_MHZ    16
+#define set_tmo_us(time)  dht11_timeout = (uint16_t)(F_MASTER_MHZ * time)
+u8 wait_low(uint16_t timeout)
+{
+    set_tmo_us(timeout);
+    while( !DHT_Read && --dht11_timeout);
+    if(!dht11_timeout) return 1;
+    return 0;
+}
+u8 wait_high(uint16_t timeout)
+{
+  set_tmo_us(timeout);
+  while( DHT_Read && --dht11_timeout);
+  if(!dht11_timeout) return 1;
+  return 0;
+}
 
 #define DHT_MA_NUM             20
 #define DHT_TEM_MAX            50
@@ -73,58 +91,42 @@ unsigned char U8FLAG,U8temp;
 u8 DHT_ReadData(u8 *data)
 {
     unsigned char i,j;
-
-    DHT_OUT();
-    DHT_Low();      //DHT11=0
+    DHT_OUT;
+    DHT_Low;      //DHT11=0
     Delayms(20); 	  //delay 20ms
-    DHT_High();     //DHT11=1
+    DHT_High;     //DHT11=1
     Delay10Us(4);	  //delay 40us
-    DHT_IN();       //DHT11_input
-    U8FLAG=1;
-    while ( !DHT_Read()/* && U8FLAG++ < 255*/); //wait DHT11 fist 80us low singal
-    /*if(U8FLAG == 255) 
-    {
-      return 1;
-    }*/
-    while((DHT_Read())/*&& U8FLAG++ < 255*/); //wait DHT11 fist 80us high singal
-    /*if(U8FLAG == 255) 
-    {
-      return 1;
-    }*/
-        for(j = 0; j<5; j++) { //read 5 bytes data
-            for(i=0; i<8; i++) {
-                //U8FLAG=1;
-                while(!DHT_Read()/*&&U8FLAG++ < 255*/);//wait the first 50us low singal
-                /*if(U8FLAG == 255) 
-                {
-                  return 1;
-                }*/
-                Delay10Us(3);
-                U8temp=0;
-
-                if(DHT_Read())
-                    U8temp=1;//wait the high singal if over 30us the this bit set to 1
-               
-                data[j]<<=1;
-                data[j]|=U8temp;
-                while(DHT_Read());
-            }
-
+    DHT_IN;       //DHT11_input
+    U8FLAG=0;
+    wait_low(100); //wait DHT11 fist 80us low singal  response
+    wait_high(100); //wait DHT11 fist 80us high singal   prepare
+    for(j = 0; j<5; j++) { //read 5 bytes data
+        for(i=0; i<8; i++) {
+            wait_low(100);//wait the first 50us low singal
+            U8temp=0;
+            Delay10Us(3);
+            if(DHT_Read)
+                U8temp=1;//wait the high singal if over 30us the this bit set to 1          
+            data[j]<<=1;
+            data[j]|=U8temp;
+            wait_high(100);
         }
-
-        if(data[4] == (data[0] + data[1] + data[2] + data[3])) { // check data with check sum
-            return 0;
-        }
-        return 0;
+    }
+    return 0;
 }
 
 RESULT DHT_GetData(u16 * t, u16 * h)
 {
+  collect_times++;
+  /*if(collect_times == 600)
+  {
+     return RESULT_OK;
+  }*/
   u8 tmp[5]={0};
   if (DHT_ReadData(tmp) == 1)
     return RESULT_ERRREAD;
-  //if (tmp[4] == DHT_CheckSum(tmp))
-  //{
+  if (tmp[4] == DHT_CheckSum(tmp))
+  {
     // decimal part process
     u8 dectmp = tmp[1];
     if (dectmp < 10 ) dectmp *= 10;
@@ -134,9 +136,23 @@ RESULT DHT_GetData(u16 * t, u16 * h)
     if (dectmp < 10 ) dectmp *= 10;
     else if(dectmp >=100) dectmp /= 10;
     *t = tmp[2]*100 + dectmp;
-  //}
-  //else
-  //  return RESULT_ERRCHKSUM;
+    collect_times_success++;
+    /*if(collect_times_success == 500)
+    {
+      //printf("oh,no");
+      return RESULT_OK;
+    }*/
+  }
+  else
+  {
+    collect_times_fail++;
+    /*if(collect_times_fail == 500)
+    {
+      //printf("oh,no");
+      return RESULT_ERRCHKSUM;
+    }*/
+    return RESULT_ERRCHKSUM;
+  }  
   return RESULT_OK;
 }
 
