@@ -10,7 +10,7 @@ LimitSize=0
 ByteLimit=50
 [DebugChecksum]
 <<<<<<< HEAD
-Checksum=1067062287
+Checksum=1679377970
 =======
 Checksum=-1623406654
 >>>>>>> 73410b0bfbecaa4006187a59e77ceab9ff43904a
@@ -25,8 +25,7 @@ ShowTimeLog=1
 ShowTimeSum=1
 [Breakpoints]
 Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.247.5" 1 0 0 0 "" 0 ""
-Bp1=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.628.17" 1 0 0 0 "" 0 ""
-Count=2
+Count=1
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
