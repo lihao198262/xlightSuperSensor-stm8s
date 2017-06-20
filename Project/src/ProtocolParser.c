@@ -263,6 +263,18 @@ void Msg_SenALS(uint8_t _value) {
 }
 #endif
 
+#ifdef EN_SENSOR_MIC
+// Prepare MIC message
+void Msg_SenMIC(uint16_t _value) {
+  build(NODEID_GATEWAY, S_SOUND, C_PRESENTATION, V_LEVEL, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(2);
+  sndMsg.payload.data[0] = _value % 256;
+  sndMsg.payload.data[1] = _value / 256;
+  bMsgReady = 1;
+}
+#endif
+
 #ifdef EN_SENSOR_PIR
 // Prepare PIR message
 void Msg_SenPIR(bool _sw) {
