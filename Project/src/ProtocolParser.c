@@ -2,6 +2,7 @@
 #include "_global.h"
 #include "MyMessage.h"
 #include "relay_key.h"
+#include "keySimulator.h"
 #include "xliNodeConfig.h"
 #include "infrared.h"
 
@@ -27,6 +28,7 @@ uint8_t ParseProtocol(){
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
   uint8_t _type = rcvMsg.header.type;
   uint8_t _sensor = rcvMsg.header.sensor;
+  uint8_t _lenPayl = miGetLength();
   bool _needAck = (bool)miGetRequestAck();
   bool _isAck = (bool)miGetAck();
   bool _OnOff;
@@ -38,7 +40,7 @@ uint8_t ParseProtocol(){
       uint8_t lv_nodeID = _sensor;
       if( lv_nodeID == NODEID_GATEWAY || lv_nodeID == NODEID_DUMMY ) {
       } else {
-        if( miGetLength() > 8 ) {
+        if( _lenPayl > 8 ) {
           // Verify _uniqueID        
           if(!isIdentityEqual(_uniqueID, rcvMsg.payload.data+8, UNIQUE_ID_LEN)) {
             return 0;
@@ -118,8 +120,7 @@ uint8_t ParseProtocol(){
     
   case C_SET:
     if( IS_MINE_SUBID(_sensor) && !_isAck ) {
-#ifdef ZENSENSOR        
-      if( _type == V_STATUS ) {
+      if( _type == V_STATUS && gConfig.nodeID == NODEID_SUPERSENSOR ) {
         // set zensensor on/off
         _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
         gConfig.state = _OnOff;
@@ -129,51 +130,62 @@ uint8_t ParseProtocol(){
           return 1;
         }
       } else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
-        for( uint8_t idx = 0; idx < miGetLength(); idx++ ) {
+        for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
           _OnOff = relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON);
           if( _needAck ) {
             Msg_Relay_Ack(_sender, _OnOff ? V_RELAY_ON : V_RELAY_OFF, rcvMsg.payload.data[idx]);
             SendMyMessage();
           }
         }
+      } else if( IS_TARGET_CURTAIN(_type) ) {
+        // General Key Control
+        /// Get SubID
+        uint8_t targetSubID = _type & 0x0F;
+        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        if( _needAck ) {
+          Msg_Relay_Ack(_sender, _type, _OnOff);
+          return 1;
+        }
+      } else if( IS_TARGET_AIRCONDITION(_type) ) {
+        // ToDo: air conditioner control code goes here
+        //...
+      } else if( IS_TARGET_AIRPURIFIER(_type) ) {
+        // Parsing payload
+        unsigned long buf[2];
+        switch(rcvMsg.payload.data[1]) {
+        case '1':
+          buf[0] = 0x00FF00FFL;
+          break;
+        case '2':
+          buf[0] = 0x00FF8877L;
+          break;
+        case '3':
+          buf[0] = 0x00FFC837L;
+          break;
+        case '4':
+          buf[0] = 0x00FF08F7L;
+          break;
+        case '5':
+          buf[0] = 0x00FF28D7L;
+          break;
+        case '6':
+          buf[0] = 0x00FF48B7L;
+          break;
+        case '7':
+          buf[0] = 0x00FF54ABL;
+          break;
+        case '8':
+          buf[0] = 0x00FF708FL;
+          break;
+        case '9':
+          buf[0] = 0x00FF946BL;
+          break;
+        default:
+          buf[0] = 0xFFFFFFFFL;
+          break;
+        }
+        Set_Send_Buf(buf, 1);
       }
-#else
-      // Parsing payload
-      unsigned long buf[2];
-      switch(rcvMsg.payload.data[1]) {
-      case '1':
-        buf[0] = 0x00FF00FFL;
-        break;
-      case '2':
-        buf[0] = 0x00FF8877L;
-        break;
-      case '3':
-        buf[0] = 0x00FFC837L;
-        break;
-      case '4':
-        buf[0] = 0x00FF08F7L;
-        break;
-      case '5':
-        buf[0] = 0x00FF28D7L;
-        break;
-      case '6':
-        buf[0] = 0x00FF48B7L;
-        break;
-      case '7':
-        buf[0] = 0x00FF54ABL;
-        break;
-      case '8':
-        buf[0] = 0x00FF708FL;
-        break;
-      case '9':
-        buf[0] = 0x00FF946BL;
-        break;
-      default:
-        buf[0] = 0xFFFFFFFFL;
-        break;
-      }
-      Set_Send_Buf(buf, 1);
-#endif      
     }
     break;
   }
@@ -261,6 +273,18 @@ void Msg_SenALS(uint8_t _value) {
   moSetPayloadType(P_BYTE);
   moSetLength(1);
   sndMsg.payload.data[0] = _value;
+  bMsgReady = 1;
+}
+#endif
+
+#ifdef EN_SENSOR_MIC
+// Prepare MIC message
+void Msg_SenMIC(uint16_t _value) {
+  build(NODEID_GATEWAY, S_SOUND, C_PRESENTATION, V_LEVEL, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(2);
+  sndMsg.payload.data[0] = _value % 256;
+  sndMsg.payload.data[1] = _value / 256;
   bMsgReady = 1;
 }
 #endif

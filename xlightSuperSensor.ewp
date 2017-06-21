@@ -1683,6 +1683,9 @@
         <name>$PROJ_DIR$\Project\inc\infrared.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\keySimulator.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\MyMessage.h</name>
       </file>
       <file>
@@ -1699,6 +1702,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\sen_dht.h</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\inc\sen_mic.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\sen_pir.h</name>
@@ -1731,6 +1737,9 @@
         <name>$PROJ_DIR$\Project\src\infrared.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\src\keySimulator.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\src\main.c</name>
       </file>
       <file>
@@ -1747,6 +1756,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\sen_dht.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\sen_mic.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\sen_pir.c</name>
