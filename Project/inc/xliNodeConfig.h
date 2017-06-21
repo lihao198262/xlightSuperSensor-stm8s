@@ -24,17 +24,19 @@
 #define NCF_LEN_DATA_FN_HUE             12
 
 // Key operation style
-#define KEY_OP_STYLE_PRESS              'p'      // Normal press
-#define KEY_OP_STYLE_FAST_PRESS         'f'      // Fast press
-#define KEY_OP_STYLE_LONG_PRESS         'l'      // Long-press
+#define KEY_OP_STYLE_PRESS              'p'      // Normal press, 200ms
+#define KEY_OP_STYLE_FAST_PRESS         'f'      // Fast press, 100ms
+#define KEY_OP_STYLE_LONG_PRESS         'l'      // Long-press, 500ms
 #define KEY_OP_STYLE_HOLD               'h'      // Hold
 #define KEY_OP_STYLE_RELEASE            'r'      // Release
 #define KEY_OP_STYLE_DBL_CLICK          'd'      // Double-click
 
 // Key interval delimitator
-#define KEY_DELI_NORMAL_PAUSE           '.'      // Normal pause
-#define KEY_DELI_LONG_PAUSE             ':'      // Long pause
-#define KEY_DELI_VLONG_PAUSE            '-'      // Very long pause
+#define KEY_DELI_NO_PAUSE               '+'      // No delay
+#define KEY_DELI_SMALL_PAUSE            ','      // Small pause, 200ms
+#define KEY_DELI_NORMAL_PAUSE           '.'      // Normal pause, 600ms
+#define KEY_DELI_LONG_PAUSE             '='      // Long pause, 2s
+#define KEY_DELI_VLONG_PAUSE            '~'      // Very long pause, 5s
 #define KEY_DELI_SAME_TIME              '&'      // Press two keys at the same time
 
 

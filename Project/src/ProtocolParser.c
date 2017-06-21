@@ -2,6 +2,7 @@
 #include "_global.h"
 #include "MyMessage.h"
 #include "relay_key.h"
+#include "keySimulator.h"
 #include "xliNodeConfig.h"
 #include "infrared.h"
 
@@ -27,6 +28,7 @@ uint8_t ParseProtocol(){
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
   uint8_t _type = rcvMsg.header.type;
   uint8_t _sensor = rcvMsg.header.sensor;
+  uint8_t _lenPayl = miGetLength();
   bool _needAck = (bool)miGetRequestAck();
   bool _isAck = (bool)miGetAck();
   bool _OnOff;
@@ -38,7 +40,7 @@ uint8_t ParseProtocol(){
       uint8_t lv_nodeID = _sensor;
       if( lv_nodeID == NODEID_GATEWAY || lv_nodeID == NODEID_DUMMY ) {
       } else {
-        if( miGetLength() > 8 ) {
+        if( _lenPayl > 8 ) {
           // Verify _uniqueID        
           if(!isIdentityEqual(_uniqueID, rcvMsg.payload.data+8, UNIQUE_ID_LEN)) {
             return 0;
@@ -128,14 +130,26 @@ uint8_t ParseProtocol(){
           return 1;
         }
       } else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
-        for( uint8_t idx = 0; idx < miGetLength(); idx++ ) {
+        for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
           _OnOff = relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON);
           if( _needAck ) {
             Msg_Relay_Ack(_sender, _OnOff ? V_RELAY_ON : V_RELAY_OFF, rcvMsg.payload.data[idx]);
             SendMyMessage();
           }
         }
-      } else {
+      } else if( IS_TARGET_CURTAIN(_type) ) {
+        // General Key Control
+        /// Get SubID
+        uint8_t targetSubID = _type & 0x0F;
+        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        if( _needAck ) {
+          Msg_Relay_Ack(_sender, _type, _OnOff);
+          return 1;
+        }
+      } else if( IS_TARGET_AIRCONDITION(_type) ) {
+        // ToDo: air conditioner control code goes here
+        //...
+      } else if( IS_TARGET_AIRPURIFIER(_type) ) {
         // Parsing payload
         unsigned long buf[2];
         switch(rcvMsg.payload.data[1]) {
