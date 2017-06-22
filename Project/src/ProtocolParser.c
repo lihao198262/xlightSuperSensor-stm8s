@@ -148,7 +148,9 @@ uint8_t ParseProtocol(){
         }
       } else if( IS_TARGET_AIRCONDITION(_type) ) {
         // ToDo: air conditioner control code goes here
-        Set_AC_Buf(rcvMsg.payload.data, 14);
+        if( _lenPayl >= 14 ) {
+          Set_AC_Buf(rcvMsg.payload.data, 14);
+        }
       } else if( IS_TARGET_AIRPURIFIER(_type) ) {
         // Parsing payload
         unsigned long buf[2];
