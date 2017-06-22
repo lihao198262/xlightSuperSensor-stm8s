@@ -93,10 +93,11 @@ bool isIdentityEqual(const UC *pId1, const UC *pId2, UC nLen);
 void GotNodeID();
 void GotPresented();
 void tmrProcess();
+void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _on);
 
 #define IS_MINE_SUBID(nSID)             ((nSID) == 0 || ((nSID) & gConfig.subID))
-#define IS_TARGET_CURTAIN(nTag)         ((nTag) & ZEN_TARGET_CURTAIN == ZEN_TARGET_CURTAIN)
-#define IS_TARGET_AIRPURIFIER(nTag)     ((nTag) & ZEN_TARGET_AIRPURIFIER == ZEN_TARGET_AIRPURIFIER)
-#define IS_TARGET_AIRCONDITION(nTag)    ((nTag) & ZEN_TARGET_AIRCONDITION == ZEN_TARGET_AIRCONDITION)
+#define IS_TARGET_CURTAIN(nTag)         (((nTag) & 0xF0) == ZEN_TARGET_CURTAIN)
+#define IS_TARGET_AIRPURIFIER(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_AIRPURIFIER)
+#define IS_TARGET_AIRCONDITION(nTag)    (((nTag) & 0xF0) == ZEN_TARGET_AIRCONDITION)
 
 #endif /* __GLOBAL_H */

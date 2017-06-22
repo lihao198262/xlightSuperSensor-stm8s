@@ -703,6 +703,8 @@ void tmrProcess() {
    // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
+      // Timer started
+      ScanKeyBuffer(i);
     }
   }
 }
