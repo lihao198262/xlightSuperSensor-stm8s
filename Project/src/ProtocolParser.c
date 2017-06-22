@@ -147,8 +147,14 @@ uint8_t ParseProtocol(){
           return 1;
         }
       } else if( IS_TARGET_AIRCONDITION(_type) ) {
-        // ToDo: air conditioner control code goes here
-        //...
+        // Air conditioner control code goes here
+        if( _lenPayl > 0 ) {
+          unsigned long buf[7];
+          uint8_t _codeLen = (_lenPayl - 1) / sizeof(unsigned long) + 1;
+          memset(buf, 0xFF, sizeof(buf));
+          memcpy(buf, rcvMsg.payload.data, _lenPayl);
+          Set_Send_Buf(buf, _codeLen);
+        }
       } else if( IS_TARGET_AIRPURIFIER(_type) ) {
         // Parsing payload
         unsigned long buf[2];

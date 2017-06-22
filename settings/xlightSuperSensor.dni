@@ -10,7 +10,7 @@ LimitSize=0
 ByteLimit=50
 [DebugChecksum]
 <<<<<<< HEAD
-Checksum=-345963292
+Checksum=-175237688
 =======
 Checksum=-1623406654
 >>>>>>> 73410b0bfbecaa4006187a59e77ceab9ff43904a
@@ -25,7 +25,12 @@ ShowTimeLog=1
 ShowTimeSum=1
 [Breakpoints]
 Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.250.5" 1 0 0 0 "" 0 ""
-Count=1
+Bp1=_ "STD_CODE" "{$PROJ_DIR$\Project\src\keySimulator.c}.97.3" 1 0 0 0 "" 0 ""
+Bp2=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.98.9" 1 0 0 0 "" 0 ""
+Bp3=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.519.12" 1 0 0 0 "" 0 ""
+Bp4=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.143.17" 1 0 0 0 "" 0 ""
+Bp5=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.151.9" 1 0 0 0 "" 0 ""
+Count=6
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
