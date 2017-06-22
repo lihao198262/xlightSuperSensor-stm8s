@@ -16,12 +16,12 @@ void TIM1_PWM_Init(void)
   
 #ifdef CHANNEL1
   TIM1_OC1Init(TIM1_OCMODE_PWM2, TIM1_OUTPUTSTATE_ENABLE, TIM1_OUTPUTNSTATE_DISABLE,
-               50, TIM1_OCPOLARITY_LOW, TIM1_OCNPOLARITY_HIGH, TIM1_OCIDLESTATE_SET,
+               130, TIM1_OCPOLARITY_LOW, TIM1_OCNPOLARITY_HIGH, TIM1_OCIDLESTATE_SET,
               TIM1_OCNIDLESTATE_RESET); 
 #endif
   
 #ifdef CHANNEL4
-  TIM1_OC4Init(TIM1_OCMODE_PWM2, TIM1_OUTPUTSTATE_ENABLE, 50, TIM1_OCPOLARITY_LOW, TIM1_OCIDLESTATE_RESET);
+  TIM1_OC4Init(TIM1_OCMODE_PWM2, TIM1_OUTPUTSTATE_ENABLE, 130, TIM1_OCPOLARITY_LOW, TIM1_OCIDLESTATE_RESET);
   TIM1_CCxCmd(TIM1_CHANNEL_4, ENABLE); 
   TIM1_OC4PreloadConfig(ENABLE);
 #endif
@@ -174,10 +174,6 @@ void Haier_Infrared_Send(uint8_t data[], int len)
 
 u32 TimingDelay; 
 
-#define BUFFER_LEN 10
-unsigned long  send_buf[BUFFER_LEN];
-u16 send_buf_len = 0;
-
 /*******************************************************************************
  * 名称: TIM2_Time_Init
  * 功能: TIM2初始化操作 用作休眠计时
@@ -233,6 +229,15 @@ void Infrared_Init(void)
   enableInterrupts(); 
 }
 
+#define BUFFER_LEN 10
+unsigned long  send_buf[BUFFER_LEN];
+u16 send_buf_len = 0;
+
+#define BUFFER_AC_LEN 14
+uint8_t air_condition_buf[BUFFER_AC_LEN];
+bool isACNeedToSend = FALSE;
+
+
 void Set_Send_Buf(u32 *buf, u16 len)
 {
   send_buf_len = len < BUFFER_LEN ? len : BUFFER_LEN;
@@ -241,6 +246,18 @@ void Set_Send_Buf(u32 *buf, u16 len)
     send_buf[i] = buf[i];
   }
 }
+
+void Set_AC_Buf(uint8_t *buf, u16 len)
+{
+  send_buf_len = len < BUFFER_AC_LEN ? len : BUFFER_AC_LEN;
+  for(u16 i=0; i<send_buf_len; i++)
+  {
+    air_condition_buf[i] = buf[i];
+  }
+  
+  isACNeedToSend = TRUE;
+}
+
 
 
 void IR_Send()
@@ -252,4 +269,10 @@ void IR_Send()
     
   }
   send_buf_len = 0;
+  
+  if(isACNeedToSend) 
+  {
+    Haier_Infrared_Send(air_condition_buf, BUFFER_AC_LEN);
+    isACNeedToSend = FALSE;
+  }
 }

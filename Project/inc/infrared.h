@@ -74,6 +74,8 @@ void Delay_50Us( u32 nTime);
 
 void Set_Send_Buf(u32 *buf, u16 len);
 
+void Set_AC_Buf(uint8_t *buf, u16 len);
+
 void IR_Send();
 #endif
 
