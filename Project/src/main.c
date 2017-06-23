@@ -6,6 +6,7 @@
 #include "Uart2Dev.h"
 #include "timer_4.h"
 #include "relay_key.h"
+#include "keySimulator.h"
 #include "infrared.h"
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
@@ -89,9 +90,10 @@ Connections:
 
 // Keep alive message interval, around 6 seconds
 #define RTE_TM_KEEP_ALIVE               500    // about 5s (500 * 10ms)
-#define MAX_RF_FAILED_TIME              10      // Reset RF module when reach max failed times of sending
+#define MAX_RF_FAILED_TIME              10     // Reset RF module when reach max failed times of sending
 
 // Sensor reading duration
+#define SEN_MAX_SEND_INTERVAL           6000   // about 60s (6000 * 10ms)
 #define SEN_READ_ALS                    200    // about 2s (200 * 10ms)
 #define SEN_READ_MIC                    200    // about 2s (200 * 10ms)
 #define SEN_READ_PIR                    10     // about 100ms (10 * 10ms)
@@ -99,8 +101,11 @@ Connections:
 #define SEN_READ_DHT                    300    // about 3s (300 * 10ms)
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
-#define ONOFF_RESET_TIMES               3       // on / off times to reset device
-#define REGISTER_RESET_TIMES            30      // default 5, super large value for show only to avoid ID mess
+// For Gu'an Demo Classroom
+#define ONOFF_RESET_TIMES               10     // on / off times to reset device, regular value is 3
+
+#define RAPID_PRESENTATION                     // Don't wait for presentation-ack
+#define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
   
 // Unique ID
 #if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
@@ -147,7 +152,8 @@ uint8_t m_cntRFSendFailed = 0;
 #endif 
 
 #ifdef EN_SENSOR_DHT       
-   uint16_t dht_tick = 0;
+   uint16_t dht_tem_tick = 0;
+   uint16_t dht_hum_tick = 0;
    uint16_t dht_collect_tick = 0;
 #endif
 
@@ -374,6 +380,10 @@ bool SayHelloToDevice(bool infinate) {
         // Send Presentation Message
         Msg_Presentation();
         _presentCnt++;
+#ifdef RAPID_PRESENTATION
+        // Don't wait for ack
+        mStatus = SYS_RUNNING;
+#endif       
       }
            
       if( !SendMyMessage() ) {
@@ -481,6 +491,7 @@ int main( void ) {
   wwdg_init();
   
   relay_key_init();
+  keySimulator_init();
   
   // Init sensors
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
@@ -492,9 +503,6 @@ int main( void ) {
 #ifdef EN_SENSOR_PM25
   pm25_init();
 #endif
-/*#ifdef EN_SENSOR_DHT
-  dht_init();
-#endif*/
   
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC  
   // Init ADC
@@ -502,8 +510,8 @@ int main( void ) {
 #endif 
 
   // Init timer
-  TIM4_10ms_handler = tmrProcess;
-  Time4_Init();
+  //TIM4_10ms_handler = tmrProcess;
+  //Time4_Init();
   
 #ifdef EN_SENSOR_DHT
   DHT_init();
@@ -543,7 +551,7 @@ int main( void ) {
         if( gConfig.senMap & sensorPIR ) {
           if( !bMsgReady && pir_tick > SEN_READ_PIR ) {
             pir_st = pir_read();
-            if( pre_pir_st != pir_st ) {
+            if( pre_pir_st != pir_st || pir_tick > SEN_MAX_SEND_INTERVAL ) {
               // Reset read timer
               pir_tick = 0;
               // Send detection message
@@ -559,7 +567,7 @@ int main( void ) {
         if( gConfig.senMap & sensorALS ) {
           if( !bMsgReady && als_tick > SEN_READ_ALS ) {
             if( als_ready ) {
-              if( pre_als_value != als_value ) {
+              if( pre_als_value != als_value || als_tick > SEN_MAX_SEND_INTERVAL ) {
                 // Reset read timer
                 als_tick = 0;
                 // Send brightness message
@@ -576,7 +584,7 @@ int main( void ) {
         if( gConfig.senMap & sensorMIC ) {
           if( !bMsgReady && mic_tick > SEN_READ_MIC ) {
             if( mic_ready ) {
-              if( pre_mic_value != mic_value ) {
+              if( pre_mic_value != mic_value || mic_tick > SEN_MAX_SEND_INTERVAL ) {
                 // Reset read timer
                 mic_tick = 0;
                 // Send brightness message
@@ -592,7 +600,7 @@ int main( void ) {
         if( gConfig.senMap & sensorDUST ) {
           if( !bMsgReady && pm25_tick > SEN_READ_PM25 ) {
             if( pm25_ready ) {
-              if( lv_pm2_5 != pm25_value ) {
+              if( lv_pm2_5 != pm25_value || pm25_tick > SEN_MAX_SEND_INTERVAL ) {
                 // Reset read timer
                 pm25_tick = 0;
                 lv_pm2_5 = pm25_value;
@@ -621,24 +629,27 @@ int main( void ) {
             DHT_checkData();
           }
           // Read & Send Data
-          if( !bMsgReady && dht_tick > SEN_READ_DHT ) {
+          if( !bMsgReady && (dht_tem_tick > SEN_READ_DHT || dht_hum_tick > SEN_READ_DHT) ) {
             if( dht_tem_ready || dht_hum_ready ) {
               if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) ) {
-                // Reset read timer
-                dht_tick = 0;
-                if( dht_tem_ready && dht_hum_ready && pre_dht_t != dht_tem_value && pre_dht_h != dht_hum_value ) {
+                if( dht_tem_ready && dht_hum_ready && (pre_dht_t != dht_tem_value || dht_tem_tick > SEN_MAX_SEND_INTERVAL)
+                   && (pre_dht_h != dht_hum_value || dht_hum_tick > SEN_MAX_SEND_INTERVAL) ) {
                   // Send detection message
+                  dht_tem_tick = 0;
+                  dht_hum_tick = 0;
                   pre_dht_t = dht_tem_value;
                   pre_dht_h = dht_hum_value;
                   Msg_SenDHT(dht_tem_value,dht_hum_value, 0);   
                 }
-                else if(dht_tem_ready && pre_dht_t != dht_tem_value)
+                else if(dht_tem_ready && (pre_dht_t != dht_tem_value || dht_tem_tick > SEN_MAX_SEND_INTERVAL) )
                 {
+                  dht_tem_tick = 0;
                   pre_dht_t = dht_tem_value;
                   Msg_SenDHT(dht_tem_value,dht_hum_value, 1);  
                 }
-                else if(dht_hum_ready && pre_dht_h != dht_hum_value)
+                else if(dht_hum_ready && (pre_dht_h != dht_hum_value || dht_hum_tick > SEN_MAX_SEND_INTERVAL) )
                 {
+                  dht_hum_tick = 0;
                   pre_dht_h = dht_hum_value;
                   Msg_SenDHT(dht_tem_value,dht_hum_value, 2);  
                 }
@@ -690,10 +701,19 @@ void tmrProcess() {
 #ifdef EN_SENSOR_PM25
    pm25_tick++;
 #endif
-#ifdef EN_SENSOR_DHT       
-   dht_tick++;
+#ifdef EN_SENSOR_DHT
+   dht_tem_tick++;
+   dht_hum_tick++;
    dht_collect_tick++;
-#endif   
+#endif
+
+   // Send Keys
+  for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
+    if( gKeyBuf[i].keyNum > 0 ) {
+      // Timer started
+      ScanKeyBuffer(i);
+    }
+  }
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {

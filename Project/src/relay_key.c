@@ -8,11 +8,11 @@
 #define SOFT_KEY_2_PIN_PORT             GPIOD
 #define SOFT_KEY_2_PIN_ID               GPIO_PIN_3
 
-//#define SOFT_KEY_3_PIN_PORT             GPIOD
-//#define SOFT_KEY_3_PIN_ID               GPIO_PIN_2
+#define SOFT_KEY_3_PIN_PORT             GPIOD
+#define SOFT_KEY_3_PIN_ID               GPIO_PIN_2
 
-//#define SOFT_KEY_4_PIN_PORT             GPIOD
-//#define SOFT_KEY_4_PIN_ID               GPIO_PIN_0
+#define SOFT_KEY_4_PIN_PORT             GPIOD
+#define SOFT_KEY_4_PIN_ID               GPIO_PIN_0
 
 //#define SOFT_KEY_5_PIN_PORT             GPIOF
 //#define SOFT_KEY_5_PIN_ID               GPIO_PIN_4

@@ -9,7 +9,7 @@
 /* Exported types ------------------------------------------------------------*/
 // Include Sensors
 /// Comment off line to disable sensor
-#define EN_SENSOR_ALS
+//#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
 #define EN_SENSOR_PM25
@@ -17,6 +17,7 @@
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
 #ifdef ZENREMOTE
+#undef EN_SENSOR_DHT
 #else
 #define EN_SENSOR_DHT
 #endif
@@ -60,6 +61,11 @@
 
 #define UNIQUE_ID_LEN           8
 
+// Target Type (mask)
+#define ZEN_TARGET_CURTAIN      0x80
+#define ZEN_TARGET_AIRPURIFIER  0x90
+#define ZEN_TARGET_AIRCONDITION 0xA0
+
 typedef struct
 {
   UC version                  :8;           // Data version, other than 0xFF
@@ -88,7 +94,11 @@ bool isIdentityEqual(const UC *pId1, const UC *pId2, UC nLen);
 void GotNodeID();
 void GotPresented();
 void tmrProcess();
+void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _on);
 
-#define IS_MINE_SUBID(nSID)        ((nSID) == 0 || ((nSID) & gConfig.subID))
+#define IS_MINE_SUBID(nSID)             ((nSID) == 0 || ((nSID) & gConfig.subID))
+#define IS_TARGET_CURTAIN(nTag)         (((nTag) & 0xF0) == ZEN_TARGET_CURTAIN)
+#define IS_TARGET_AIRPURIFIER(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_AIRPURIFIER)
+#define IS_TARGET_AIRCONDITION(nTag)    (((nTag) & 0xF0) == ZEN_TARGET_AIRCONDITION)
 
 #endif /* __GLOBAL_H */

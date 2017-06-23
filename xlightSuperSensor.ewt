@@ -108,6 +108,9 @@
         <name>$PROJ_DIR$\Project\inc\infrared.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\keySimulator.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\MyMessage.h</name>
       </file>
       <file>
@@ -157,6 +160,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\infrared.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\keySimulator.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\main.c</name>
