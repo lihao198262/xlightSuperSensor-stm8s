@@ -136,6 +136,7 @@ u8 SimulateKeyPress(u8 _target, u8 _op, u8 _key) {
       break;
     }
   }
+  return _delay;
 }
 
 bool FinishKeyPress(u8 _target, u8 _op, u8 _key, u8 _step) {
