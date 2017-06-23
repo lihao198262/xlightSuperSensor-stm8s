@@ -1,4 +1,5 @@
 #include <stm8s.h>
+#include "_global.h"
 #include "keySimulator.h"
 #include "xliNodeConfig.h"
 

@@ -17,6 +17,7 @@
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
 #ifdef ZENREMOTE
+#undef EN_SENSOR_DHT
 #else
 #define EN_SENSOR_DHT
 #endif
