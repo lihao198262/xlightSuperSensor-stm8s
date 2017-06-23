@@ -235,7 +235,6 @@ u16 send_buf_len = 0;
 
 #define BUFFER_AC_LEN 14
 uint8_t air_condition_buf[BUFFER_AC_LEN];
-u16 send_ac_buf_len = 0;
 bool isACNeedToSend = FALSE;
 
 
@@ -250,7 +249,7 @@ void Set_Send_Buf(u32 *buf, u16 len)
 
 void Set_AC_Buf(uint8_t *buf, u16 len)
 {
-  send_ac_buf_len = len < BUFFER_AC_LEN ? len : BUFFER_AC_LEN;
+  u16 send_ac_buf_len = len < BUFFER_AC_LEN ? len : BUFFER_AC_LEN;
   for(u16 i=0; i<send_ac_buf_len; i++)
   {
     air_condition_buf[i] = buf[i];
