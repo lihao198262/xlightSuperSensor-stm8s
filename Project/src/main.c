@@ -510,8 +510,8 @@ int main( void ) {
 #endif 
 
   // Init timer
-  TIM4_10ms_handler = tmrProcess;
-  Time4_Init();
+  //TIM4_10ms_handler = tmrProcess;
+  //Time4_Init();
   
 #ifdef EN_SENSOR_DHT
   DHT_init();
