@@ -38,6 +38,10 @@ void keySimulator_init() {
     gKeyBuf[i].keyNum = 0;    
     gKeyBuf[i].ptr = 0;
     gKeyBuf[i].tick = 0;
+    gKeyBuf[i].key_on = FALSE;
+    gKeyBuf[i].key_tick = 0;
+    gKeyBuf[i].key_delay = 0;
+    gKeyBuf[i].key_dbl_step = 0;
     memset(gKeyBuf[i].keys, 0x00, sizeof(keyStyle_t) * KEY_OP_MAX_KEYS);
   }
   
@@ -89,6 +93,10 @@ bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
       gKeyBuf[i].target = _target;
       gKeyBuf[i].ptr = 0;
       gKeyBuf[i].tick = 0;
+      gKeyBuf[i].key_on = FALSE;
+      gKeyBuf[i].key_tick = 0;
+      gKeyBuf[i].key_delay = 0;
+      gKeyBuf[i].key_dbl_step = 0;
       gKeyBuf[i].keyNum = _keyNum;
       return TRUE;
     }
@@ -96,37 +104,91 @@ bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
   return FALSE;
 }
 
-void SimulateKeyPress(u8 _target, u8 _op, u8 _key) {
+u8 SimulateKeyPress(u8 _target, u8 _op, u8 _key) {
   GPIO_TypeDef *_port;
   GPIO_Pin_TypeDef _pin;
+  u8 _delay = 0;
   if( LookupKeyPinMap(_target, _key, &_port, &_pin) ) {
     switch(_op) {
     case KEY_OP_STYLE_PRESS:
       relay_gpio_write_bit(_port, _pin, TRUE);
+      _delay = 20;
       break;
     case KEY_OP_STYLE_FAST_PRESS:
+      relay_gpio_write_bit(_port, _pin, TRUE);
+      _delay = 10;
       break;
     case KEY_OP_STYLE_LONG_PRESS:
+      relay_gpio_write_bit(_port, _pin, TRUE);
+      _delay = 50;
       break;
     case KEY_OP_STYLE_HOLD:
+      relay_gpio_write_bit(_port, _pin, TRUE);
+      _delay = 0;
       break;
     case KEY_OP_STYLE_RELEASE:
+      relay_gpio_write_bit(_port, _pin, FALSE);
+      _delay = 0;
       break;
     case KEY_OP_STYLE_DBL_CLICK:
-      // ToDo:...
+      relay_gpio_write_bit(_port, _pin, TRUE);
+      _delay = 10;
       break;
     }
   }
 }
 
+bool FinishKeyPress(u8 _target, u8 _op, u8 _key, u8 _step) {
+  GPIO_TypeDef *_port;
+  GPIO_Pin_TypeDef _pin;
+  bool rc = TRUE;
+  if( LookupKeyPinMap(_target, _key, &_port, &_pin) ) {
+    switch(_op) {
+    case KEY_OP_STYLE_PRESS:
+    case KEY_OP_STYLE_FAST_PRESS:
+    case KEY_OP_STYLE_LONG_PRESS:
+      relay_gpio_write_bit(_port, _pin, FALSE);
+      break;
+    case KEY_OP_STYLE_DBL_CLICK:
+      if( _step < 4 ) { // 1 - on to off; 2 - off to on; 3 - on to off;
+        relay_gpio_write_bit(_port, _pin, _step % 2 == 0);
+        rc = FALSE;
+      }
+      break;
+    }
+  }
+  return rc;
+}
+
 void ScanKeyBuffer(u8 _idx) {
   u8 _k = gKeyBuf[_idx].ptr;
-  if( _k < gKeyBuf[_idx].keyNum ) {    
-    // Tick
-    if( ++gKeyBuf[_idx].tick > gKeyBuf[_idx].keys[_k].delay ) {
-      SimulateKeyPress(gKeyBuf[_idx].target, gKeyBuf[_idx].keys[_k].op, gKeyBuf[_idx].keys[_k].keyID);
-      gKeyBuf[_idx].tick = 0;
-      gKeyBuf[_idx].ptr++;
+  if( _k < gKeyBuf[_idx].keyNum ) {
+    if( gKeyBuf[_idx].key_on ) {
+      // In the middle of key operation
+      if( ++gKeyBuf[_idx].key_tick > gKeyBuf[_idx].key_delay ) {
+        // Finished, move to next key
+        gKeyBuf[_idx].key_tick = 0;
+        if( FinishKeyPress(gKeyBuf[_idx].target, gKeyBuf[_idx].keys[_k].op, gKeyBuf[_idx].keys[_k].keyID, gKeyBuf[_idx].key_dbl_step) ) {
+          gKeyBuf[_idx].key_on = FALSE;
+          gKeyBuf[_idx].tick = 0;
+          gKeyBuf[_idx].ptr++;
+        } else {
+          gKeyBuf[_idx].key_dbl_step++;
+        }
+      }
+    } else {
+      // Wait for next key operation
+      if( ++gKeyBuf[_idx].tick > gKeyBuf[_idx].keys[_k].delay ) {
+        // Trigger a new key
+        gKeyBuf[_idx].key_delay = SimulateKeyPress(gKeyBuf[_idx].target, gKeyBuf[_idx].keys[_k].op, gKeyBuf[_idx].keys[_k].keyID);
+        gKeyBuf[_idx].tick = 0;
+        gKeyBuf[_idx].key_tick = 0;
+        gKeyBuf[_idx].key_on = TRUE;
+        gKeyBuf[_idx].key_dbl_step = (gKeyBuf[_idx].keys[_k].op == KEY_OP_STYLE_DBL_CLICK ? 1 : 0);
+      }
     }
+  } else {
+    // All done
+    gKeyBuf[_idx].keyNum = 0;
   }
 }
