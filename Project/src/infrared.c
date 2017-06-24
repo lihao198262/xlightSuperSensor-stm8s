@@ -127,6 +127,9 @@ void NEC_Infrared_Send(unsigned long data)
 {
   NEC_HDR_MARK
   NEC_HDR_SPACE
+    
+  disableInterrupts();
+  
   for (int i = 0; i < 32; i++) {
     if (data & 0x80000000) {
       NEC_BIT_MARK
@@ -139,6 +142,9 @@ void NEC_Infrared_Send(unsigned long data)
     data <<= 1;
   }
   NEC_BIT_MARK
+  
+  enableInterrupts();
+  
   Infrared_Send_Status(FALSE);
 }
 
@@ -163,6 +169,8 @@ void Haier_Infrared_Send(uint8_t data[], int len)
   HAIER_HDR_MARK
   HAIER_HDR_SPACE2
     
+  disableInterrupts();
+  
   for(int i=0; i<len; i++)
   {
     uint8_t temp = data[i];
@@ -182,6 +190,9 @@ void Haier_Infrared_Send(uint8_t data[], int len)
   }
   
   HAIER_BIT_MARK
+    
+  enableInterrupts();
+  
   Infrared_Send_Status(FALSE);
 }
 
