@@ -357,6 +357,9 @@ void GotNodeID() {
 
 void GotPresented() {
   mStatus = SYS_RUNNING;
+  gConfig.swTimes = 0;
+  gIsChanged = TRUE;
+  SaveConfig();  
 }
 
 bool SayHelloToDevice(bool infinate) {
@@ -530,9 +533,6 @@ int main( void ) {
     
     // Must establish connection firstly
     SayHelloToDevice(TRUE);
-    gConfig.swTimes = 0;
-    gIsChanged = TRUE;
-    SaveConfig();
     
     while (mStatus == SYS_RUNNING) {
       
