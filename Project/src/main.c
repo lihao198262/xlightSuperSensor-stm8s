@@ -153,7 +153,6 @@ uint8_t m_cntRFSendFailed = 0;
 
 #ifdef EN_SENSOR_DHT       
    uint16_t dht_tem_tick = 0;
-   uint16_t dht_hum_tick = 0;
    uint16_t dht_collect_tick = 0;
 #endif
 
@@ -629,27 +628,18 @@ int main( void ) {
             DHT_checkData();
           }
           // Read & Send Data
-          if( !bMsgReady && (dht_tem_tick > SEN_READ_DHT || dht_hum_tick > SEN_READ_DHT) ) {
+          if( !bMsgReady && dht_tem_tick > SEN_READ_DHT ) {
             if( dht_tem_ready || dht_hum_ready ) {
-              if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) ) {
-                if( dht_tem_ready && dht_hum_ready && (pre_dht_t != dht_tem_value || dht_tem_tick > SEN_MAX_SEND_INTERVAL)
-                   && (pre_dht_h != dht_hum_value || dht_hum_tick > SEN_MAX_SEND_INTERVAL) ) {
-                  // Send detection message
-                  dht_tem_tick = 0;
-                  dht_hum_tick = 0;
+              if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) || dht_tem_tick > SEN_MAX_SEND_INTERVAL ) {
+                dht_tem_tick = 0;
+                if( dht_tem_ready && dht_hum_ready ) {
                   pre_dht_t = dht_tem_value;
                   pre_dht_h = dht_hum_value;
-                  Msg_SenDHT(dht_tem_value,dht_hum_value, 0);   
-                }
-                else if(dht_tem_ready && (pre_dht_t != dht_tem_value || dht_tem_tick > SEN_MAX_SEND_INTERVAL) )
-                {
-                  dht_tem_tick = 0;
+                  Msg_SenDHT(dht_tem_value,dht_hum_value, 0);
+                } else if( dht_tem_ready ) {
                   pre_dht_t = dht_tem_value;
                   Msg_SenDHT(dht_tem_value,dht_hum_value, 1);  
-                }
-                else if(dht_hum_ready && (pre_dht_h != dht_hum_value || dht_hum_tick > SEN_MAX_SEND_INTERVAL) )
-                {
-                  dht_hum_tick = 0;
+                } else {
                   pre_dht_h = dht_hum_value;
                   Msg_SenDHT(dht_tem_value,dht_hum_value, 2);  
                 }
@@ -689,10 +679,10 @@ void tmrProcess() {
   mTimerKeepAlive++;
 #ifdef EN_SENSOR_ALS
   als_tick++;
-  als_checkData();
+  if( als_tick % 10 == 0) als_checkData();
 #ifdef EN_SENSOR_MIC
   mic_tick++;
-  mic_checkData();
+  if( mic_tick % 10 == 2) mic_checkData();
 #endif
 #endif
 #ifdef EN_SENSOR_PIR
@@ -703,8 +693,8 @@ void tmrProcess() {
 #endif
 #ifdef EN_SENSOR_DHT
   dht_tem_tick++;
-  dht_hum_tick++;
   dht_collect_tick++;
+  if( dht_readtick > 0 ) dht_readtick--;
 #endif
   
   // Ir-send timer count down

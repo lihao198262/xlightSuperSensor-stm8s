@@ -2,6 +2,8 @@
 #include "sen_dht.h"
 #include "timer_2.h"
 
+u16 dht_readtick = 0;
+bool dht_readStarted = FALSE;
 static uint16_t collect_times = 0;
 static uint16_t collect_times_success = 0;
 static uint16_t collect_times_fail = 0;
@@ -107,14 +109,22 @@ bool DHT_checkData()
   return dht_tem_ready || dht_hum_ready;
 }
 
-unsigned char U8FLAG,U8temp;
+unsigned char U8FLAG, U8temp;
+
+void DHT_StartRead() {
+  DHT_OUT;
+  DHT_Low;      //DHT11=0
+  // Start timer 20ms
+  dht_readtick = 2;
+  dht_readStarted = TRUE;
+}
 
 u8 DHT_ReadData(u8 *data)
 {
     unsigned char i,j;
-    DHT_OUT;
-    DHT_Low;      //DHT11=0
-    Delayms(20); 	  //delay 20ms
+//    DHT_OUT;
+//    DHT_Low;      //DHT11=0
+//    Delayms(20);        //delay 20ms
     DHT_High;     //DHT11=1
     Delay10Us(4);	  //delay 40us
     DHT_IN;       //DHT11_input
@@ -134,20 +144,28 @@ u8 DHT_ReadData(u8 *data)
         }
     }
     
-    //DHT_OUT;
-    //DHT_High;
-    
+    DHT_OUT;
+    DHT_High;    
+    dht_readStarted = FALSE;
     return 0;
 }
 
 RESULT DHT_GetData(u16 * t, u16 * h)
 {
+  if( !dht_readStarted ) {
+    DHT_StartRead();
+    return RESULT_WAITING;
+  }
+
+  if( dht_readtick > 0 ) return RESULT_WAITING;  
+  
   collect_times++;
   /*if(collect_times == 600)
   {
      return RESULT_OK;
   }*/
   u8 tmp[5]={0};
+  
   if (DHT_ReadData(tmp) == 1)
     return RESULT_ERRREAD;
   if (tmp[4] == DHT_CheckSum(tmp))

@@ -12,6 +12,7 @@ typedef enum
   RESULT_OK =           0,      // OK
   RESULT_ERRREAD =      1,      // Error reading
   RESULT_ERRCHKSUM =    2,      // Error check sum
+  RESULT_WAITING =      3,      // Wait to read
 } RESULT;
 
 void DHT_init();
@@ -20,5 +21,6 @@ bool DHT_checkData();
 extern bool dht_tem_ready;
 extern bool dht_hum_ready;
 extern bool dht_alive;
+extern u16 dht_readtick;
 extern u16 dht_tem_value;
 extern u16 dht_hum_value;
