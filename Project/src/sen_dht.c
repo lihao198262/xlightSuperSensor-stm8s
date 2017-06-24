@@ -1,5 +1,6 @@
 //adapted from http://www.amobbs.com/thread-5517880-1-1.html?_dsign=d9eb7efa//
 #include "sen_dht.h"
+#include "timer_2.h"
 
 static uint16_t collect_times = 0;
 static uint16_t collect_times_success = 0;
@@ -49,14 +50,6 @@ RESULT DHT_GetData(u16 * t, u16 * h);
 u8 DHT_ReadData(u8 *data);
 u8 DHT_CheckSum(u8 * data);
 
-void TIM2_Init(void)
-{
-  CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER2, ENABLE);  //enable timer 2 clk
-  TIM2_TimeBaseInit(TIM2_PRESCALER_1, 160);     // 10us
-  TIM2_SetCounter(0);
-  TIM2_ARRPreloadConfig(DISABLE);
-}
-
 void DHT_init()
 {
   dht_tem_mvSum = 0;
@@ -72,28 +65,6 @@ void DHT_init()
   
   // Init Timer
   TIM2_Init();
-}
-
-void Delayms(u16 _ms) {
-  u16 ms_10us = _ms * 100;
-  
-  TIM2_ARRPreloadConfig(ENABLE);
-  TIM2_Cmd(ENABLE);
-  while(ms_10us--) {
-    while( TIM2_GetFlagStatus(TIM2_FLAG_UPDATE) == RESET );
-    TIM2_ClearFlag(TIM2_FLAG_UPDATE);
-  }
-  TIM2_Cmd(DISABLE);
-}
-
-void Delay10Us(u8 _delay) {
-  TIM2_ARRPreloadConfig(ENABLE);
-  TIM2_Cmd(ENABLE);
-  while(_delay--) {
-    while( TIM2_GetFlagStatus(TIM2_FLAG_UPDATE) == RESET );
-    TIM2_ClearFlag(TIM2_FLAG_UPDATE);
-  }
-  TIM2_Cmd(DISABLE);
 }
 
 bool DHT_checkData()

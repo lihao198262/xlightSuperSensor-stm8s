@@ -688,26 +688,29 @@ void tmrProcess() {
   // Tick
   mTimerKeepAlive++;
 #ifdef EN_SENSOR_ALS
-   als_tick++;
-   als_checkData();
+  als_tick++;
+  als_checkData();
 #ifdef EN_SENSOR_MIC
-   mic_tick++;
-   mic_checkData();
+  mic_tick++;
+  mic_checkData();
 #endif
 #endif
 #ifdef EN_SENSOR_PIR
-   pir_st++;
+  pir_st++;
 #endif
 #ifdef EN_SENSOR_PM25
-   pm25_tick++;
+  pm25_tick++;
 #endif
 #ifdef EN_SENSOR_DHT
-   dht_tem_tick++;
-   dht_hum_tick++;
-   dht_collect_tick++;
+  dht_tem_tick++;
+  dht_hum_tick++;
+  dht_collect_tick++;
 #endif
-
-   // Send Keys
+  
+  // Ir-send timer count down
+  if( ir_send_delay > 0 ) ir_send_delay--;
+  
+  // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
       // Timer started
