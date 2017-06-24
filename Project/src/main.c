@@ -282,6 +282,7 @@ void LoadConfig()
     gConfig.senMap |= sensorALS;
     gConfig.senMap |= sensorMIC;
     gConfig.senMap |= sensorDHT;
+    gConfig.senMap |= sensorDUST;
 }
 
 void UpdateNodeAddress(void) {
@@ -520,9 +521,11 @@ int main( void ) {
 #else 
   Infrared_Init();
 #endif  
+
   
   while(1) {
     // Go on only if NRF chip is presented
+    disableInterrupts();
     gConfig.present = 0;
     RF24L01_init();
     while(!NRF24L01_Check())feed_wwdg();
