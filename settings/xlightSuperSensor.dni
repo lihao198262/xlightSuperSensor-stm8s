@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=-1176555971
+Checksum=1602532677
 [CallStack]
 ShowArgs=0
 [Disassembly]
@@ -19,6 +19,17 @@ LogEnabled=0
 GraphEnabled=0
 ShowTimeLog=1
 ShowTimeSum=1
+[Breakpoints]
+Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.252.5" 1 0 0 0 "" 0 ""
+Bp1=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.98.9" 1 0 0 0 "" 0 ""
+Bp2=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.528.12" 1 0 0 0 "" 0 ""
+Bp3=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.143.17" 1 0 0 0 "" 0 ""
+Bp4=_ "STD_CODE" "{$PROJ_DIR$\Project\src\keySimulator.c}.112.3" 1 0 0 0 "" 0 ""
+Bp5=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.151.9" 1 0 0 0 "" 0 ""
+Bp6=_ "STD_CODE" "{$PROJ_DIR$\Project\src\sen_dht.c}.199.3" 1 0 0 0 "" 0 ""
+Bp7=_ "STD_CODE" "{$PROJ_DIR$\Project\src\sen_dht.c}.150.5" 1 0 0 0 "" 0 ""
+Bp8=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.634.17" 1 0 0 0 "" 0 ""
+Count=9
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
@@ -26,14 +37,6 @@ Category=_ 0
 [TermIOLog]
 LoggingEnabled=_ 0
 LogFile=_ ""
-[Breakpoints]
-Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.253.5" 1 0 0 0 "" 0 ""
-Bp1=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.98.9" 1 0 0 0 "" 0 ""
-Bp2=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.526.12" 1 0 0 0 "" 0 ""
-Bp3=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.143.17" 1 0 0 0 "" 0 ""
-Bp4=_ "STD_CODE" "{$PROJ_DIR$\Project\src\keySimulator.c}.112.1" 1 0 0 0 "" 0 ""
-Bp5=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.151.1" 1 0 0 0 "" 0 ""
-Count=6
 [Aliases]
 Count=0
 SuppressDialog=0

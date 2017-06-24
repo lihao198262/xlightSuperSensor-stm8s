@@ -694,7 +694,6 @@ void tmrProcess() {
 #ifdef EN_SENSOR_DHT
   dht_tem_tick++;
   dht_collect_tick++;
-  if( dht_readtick > 0 ) dht_readtick--;
 #endif
   
   // Ir-send timer count down

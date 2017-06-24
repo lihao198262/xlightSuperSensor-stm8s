@@ -12,7 +12,7 @@
 //#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
-#define EN_SENSOR_PM25
+//#define EN_SENSOR_PM25
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7

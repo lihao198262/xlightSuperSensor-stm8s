@@ -2,8 +2,9 @@
 #include "sen_dht.h"
 #include "timer_2.h"
 
-u16 dht_readtick = 0;
-bool dht_readStarted = FALSE;
+//#define DHT21
+#define DHT11
+
 static uint16_t collect_times = 0;
 static uint16_t collect_times_success = 0;
 static uint16_t collect_times_fail = 0;
@@ -28,7 +29,7 @@ u8 wait_high(uint16_t timeout)
 }
 
 #define DHT_TEM_MA_NUM         10
-#define DHT_HUM_MA_NUM         50
+#define DHT_HUM_MA_NUM         40
 #define DHT_TEM_MAX            50
 #define DHT_HUM_MAX            90
 
@@ -50,7 +51,6 @@ u32 dht_hum_mvSum = 0;
 
 RESULT DHT_GetData(u16 * t, u16 * h);
 u8 DHT_ReadData(u8 *data);
-u8 DHT_CheckSum(u8 * data);
 
 void DHT_init()
 {
@@ -85,12 +85,14 @@ bool DHT_checkData()
         dht_mvTemData[dht_tem_mvPtr] = newTemData;
       }  
       dht_tem_mvPtr = (dht_tem_mvPtr + 1) % DHT_TEM_MA_NUM;
+      
       if( newHumData != dht_mvHumData[dht_hum_mvPtr] ) {
         dht_hum_mvSum += newHumData;
         dht_hum_mvSum -= dht_mvHumData[dht_hum_mvPtr];
         dht_mvHumData[dht_hum_mvPtr] = newHumData;
       }  
       dht_hum_mvPtr = (dht_hum_mvPtr + 1) % DHT_HUM_MA_NUM;
+      
       if( !dht_tem_ready ) {
         dht_tem_ready = (dht_tem_mvPtr == 0);
       }
@@ -111,26 +113,23 @@ bool DHT_checkData()
 
 unsigned char U8FLAG, U8temp;
 
-void DHT_StartRead() {
-  DHT_OUT;
-  DHT_Low;      //DHT11=0
-  // Start timer 20ms
-  dht_readtick = 2;
-  dht_readStarted = TRUE;
-}
-
 u8 DHT_ReadData(u8 *data)
 {
-    unsigned char i,j;
-//    DHT_OUT;
-//    DHT_Low;      //DHT11=0
-//    Delayms(20);        //delay 20ms
+    u8 i,j = 0;
+    
+    DHT_OUT;
+    DHT_Low;      //DHT11=0
+    Delayms(20);        //delay 20ms
+    
+    disableInterrupts();
+    
     DHT_High;     //DHT11=1
     Delay10Us(4);	  //delay 40us
     DHT_IN;       //DHT11_input
+    
     U8FLAG=0;
-    wait_low(100); //wait DHT11 fist 80us low singal  response
-    wait_high(100); //wait DHT11 fist 80us high singal   prepare
+    if( wait_low(200) > 0) return RESULT_ERRREAD; //wait DHT11 fist 80us low singal  response
+    if( wait_high(200) > 0) return RESULT_ERRREAD; //wait DHT11 fist 80us high singal   prepare
     for(j = 0; j<5; j++) { //read 5 bytes data
         for(i=0; i<8; i++) {
             wait_low(100);//wait the fist 50us low singal
@@ -144,32 +143,33 @@ u8 DHT_ReadData(u8 *data)
         }
     }
     
-    DHT_OUT;
-    DHT_High;    
-    dht_readStarted = FALSE;
-    return 0;
+    enableInterrupts();
+    
+    if( (data[4] != ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) ) {
+      return RESULT_ERRCHKSUM;
+    }
+    
+    return RESULT_OK;
 }
 
 RESULT DHT_GetData(u16 * t, u16 * h)
 {
-  if( !dht_readStarted ) {
-    DHT_StartRead();
-    return RESULT_WAITING;
-  }
-
-  if( dht_readtick > 0 ) return RESULT_WAITING;  
-  
-  collect_times++;
+   collect_times++;
   /*if(collect_times == 600)
   {
      return RESULT_OK;
   }*/
   u8 tmp[5]={0};
   
-  if (DHT_ReadData(tmp) == 1)
-    return RESULT_ERRREAD;
-  if (tmp[4] == DHT_CheckSum(tmp))
+  u8 rc = DHT_ReadData(tmp);
+  if( rc == RESULT_OK )
   {
+#ifdef DHT11
+    *h = tmp[0]*100;
+    *t = tmp[2]*100;
+#endif
+    
+#ifdef DHT21
     // decimal part process
     u8 dectmp = tmp[1];
     if (dectmp < 10 ) dectmp *= 10;
@@ -179,6 +179,8 @@ RESULT DHT_GetData(u16 * t, u16 * h)
     if (dectmp < 10 ) dectmp *= 10;
     else if(dectmp >=100) dectmp /= 10;
     *t = tmp[2]*100 + dectmp;
+#endif
+    
     collect_times_success++;
     /*if(collect_times_success == 500)
     {
@@ -194,15 +196,7 @@ RESULT DHT_GetData(u16 * t, u16 * h)
       //printf("oh,no");
       return RESULT_ERRCHKSUM;
     }*/
-    return RESULT_ERRCHKSUM;
-  }  
-  return RESULT_OK;
-}
-
-u8 DHT_CheckSum(u8* data)
-{
-  u16 sum = 0;
-  for (int i = 0; i < 4; i++)
-    sum += *(data + i);
-  return (u8)sum;
+  }
+  
+  return rc;
 }

@@ -12,7 +12,6 @@ typedef enum
   RESULT_OK =           0,      // OK
   RESULT_ERRREAD =      1,      // Error reading
   RESULT_ERRCHKSUM =    2,      // Error check sum
-  RESULT_WAITING =      3,      // Wait to read
 } RESULT;
 
 void DHT_init();
