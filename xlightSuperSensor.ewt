@@ -105,6 +105,9 @@
         <name>$PROJ_DIR$\Project\inc\ADC1Dev.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\button.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\infrared.h</name>
       </file>
       <file>
@@ -160,6 +163,9 @@
       <name>src</name>
       <file>
         <name>$PROJ_DIR$\Project\src\ADC1Dev.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\button.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\infrared.c</name>

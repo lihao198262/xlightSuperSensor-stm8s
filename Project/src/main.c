@@ -132,6 +132,7 @@ uint8_t mutex = 0;
 
 // Keep Alive Timer
 uint16_t mTimerKeepAlive = 0;
+uint8_t m_cntRFReset = 0;
 uint8_t m_cntRFSendFailed = 0;
 
 
@@ -283,6 +284,10 @@ void LoadConfig()
     gConfig.senMap |= sensorMIC;
     gConfig.senMap |= sensorDHT;
     gConfig.senMap |= sensorDUST;
+    
+    if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
+      memset(gConfig.btnAction, 0x00, sizeof(Button_Action_t) * MAX_NUM_BUTTONS);
+    }
 }
 
 void UpdateNodeAddress(void) {
@@ -316,18 +321,33 @@ bool SendMyMessage() {
       WaitMutex(0x1FFFF);
       if (mutex == 1) {
         m_cntRFSendFailed = 0;
+        m_cntRFReset = 0;
         break; // sent sccessfully
-      } else if( m_cntRFSendFailed++ > MAX_RF_FAILED_TIME ) {
-        // Reset RF module
-        m_cntRFSendFailed = 0;
-        // RF24 Chip in low power
-        RF24L01_DeInit();
-        delay = 0x1FFF;
-        while(delay--)feed_wwdg();
-        RF24L01_init();
-        NRF2401_EnableIRQ();
-        UpdateNodeAddress();
-        continue;
+      } else {
+        m_cntRFSendFailed++;
+        if( m_cntRFSendFailed >= MAX_RF_FAILED_TIME ) {
+          m_cntRFSendFailed = 0;
+          m_cntRFReset++;
+          if( m_cntRFReset >= 3 ) {
+            // Cold Reset
+            WWDG->CR = 0x80;
+            m_cntRFReset = 0;
+            break;
+          } else if( m_cntRFReset >= 2 ) {
+            // Reset whole node
+            mStatus = SYS_RESET;
+            break;
+          }
+
+          // Reset RF module
+          //RF24L01_DeInit();
+          delay = 0x1FFF;
+          while(delay--)feed_wwdg();
+          RF24L01_init();
+          NRF2401_EnableIRQ();
+          UpdateNodeAddress();
+          continue;
+        }
       }
       
       //The transmission failed, Notes: mutex == 2 doesn't mean failed
@@ -522,13 +542,23 @@ int main( void ) {
   Infrared_Init();
 #endif  
 
+#ifdef EN_PANEL_BUTTONS
+  button_init();
+#endif  
   
   while(1) {
     // Go on only if NRF chip is presented
     disableInterrupts();
     gConfig.present = 0;
     RF24L01_init();
-    while(!NRF24L01_Check())feed_wwdg();
+    u16 timeoutRFcheck = 0;
+    while(!NRF24L01_Check()) {
+      if( timeoutRFcheck > 50 ) {
+        WWDG->CR = 0x80;
+        break;
+      }
+      feed_wwdg();
+    }
     
     // IRQ
     NRF2401_EnableIRQ();
@@ -653,15 +683,12 @@ int main( void ) {
 #endif
         
         // Idle Tick
-        /*
         if( !bMsgReady ) {
           // Check Keep Alive Timer
           if( mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
-            Msg_DevBrightness(NODEID_GATEWAY);
+            Msg_Relay_KeyMap(NODEID_GATEWAY);
           }
         }
-        */
-        
       } // End of if( gConfig.state )
       
       // Send message if ready
