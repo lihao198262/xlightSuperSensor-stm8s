@@ -32,6 +32,7 @@ uint8_t ParseProtocol(){
   bool _needAck = (bool)miGetRequestAck();
   bool _isAck = (bool)miGetAck();
   bool _OnOff;
+  uint8_t targetSubID;
   
   switch( _cmd ) {
   case C_INTERNAL:
@@ -73,6 +74,18 @@ uint8_t ParseProtocol(){
         gConfig.subID = rcvMsg.payload.data[0];
         break;
 
+      case NCF_PAN_SET_BTN_1:
+      case NCF_PAN_SET_BTN_2:
+      case NCF_PAN_SET_BTN_3:
+      case NCF_PAN_SET_BTN_4:
+        targetSubID = _sensor - NCF_PAN_SET_BTN_1;
+        if( targetSubID < MAX_NUM_BUTTONS ) {
+          uint8_t lv_op = BF_GET(rcvMsg.payload.data[0], 5, 3);
+          gConfig.btnAction[targetSubID][lv_op].action = rcvMsg.payload.data[0];
+          gConfig.btnAction[targetSubID][lv_op].keyMap = rcvMsg.payload.data[1];
+        }
+        break;
+        
       case NCF_DEV_MAX_NMRT:
         gConfig.rptTimes = rcvMsg.payload.data[0];
         break;
@@ -131,16 +144,15 @@ uint8_t ParseProtocol(){
         }
       } else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
         for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
-          _OnOff = relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON);
-          if( _needAck ) {
-            Msg_Relay_Ack(_sender, _OnOff ? V_RELAY_ON : V_RELAY_OFF, rcvMsg.payload.data[idx]);
+          if( relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON) ) {
+            Msg_Relay_Ack(_sender, _type, rcvMsg.payload.data[idx]);
             SendMyMessage();
           }
         }
       } else if( IS_TARGET_CURTAIN(_type) ) {
         // General Key Control
         /// Get SubID
-        uint8_t targetSubID = _type & 0x0F;
+        targetSubID = _type & 0x0F;
         _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
         if( _needAck ) {
           Msg_Relay_Ack(_sender, _type, _OnOff);
@@ -256,6 +268,15 @@ void Msg_DevOnOff(uint8_t _to) {
   moSetLength(1);
   moSetPayloadType(P_BYTE);
   sndMsg.payload.bValue = gConfig.state;
+  bMsgReady = 1;
+}
+
+// Prepare relay key map message
+void Msg_Relay_KeyMap(uint8_t _to) {
+  build(_to, gConfig.subID, C_REQ, V_RELAY_MAP, 0, 1);
+  moSetLength(1);
+  moSetPayloadType(P_BYTE);
+  sndMsg.payload.bValue = relay_key_value;
   bMsgReady = 1;
 }
 

@@ -62,21 +62,14 @@ void Infrared_Send(unsigned long data);
  ******************************************************************************/
 void Infrared_Init(void);
 
+extern u16 ir_send_delay;
 
-/*******************************************************************************
- * 名称: delay_ms
- * 功能: 利用TIM2产生的1ms中断来计时
- * 形参: nms -> 计时值(ms)
- * 返回: 无
- * 说明: 无 
- ******************************************************************************/
-void Delay_50Us( u32 nTime);
+bool Set_Send_Buf(u32 *buf, u8 len);
 
-void Set_Send_Buf(u32 *buf, u16 len);
-
-void Set_AC_Buf(uint8_t *buf, u16 len);
+bool Set_AC_Buf(uint8_t *buf, u8 len);
 
 void IR_Send();
+
 #endif
 
 
