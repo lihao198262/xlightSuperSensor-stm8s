@@ -8,21 +8,21 @@
 
 /* Exported types ------------------------------------------------------------*/
 /// Comment off line to disable panel buttons
-#define EN_PANEL_BUTTONS
+//#define EN_PANEL_BUTTONS
 
 // Include Sensors
 /// Comment off line to disable sensor
-//#define EN_SENSOR_ALS
+#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
-//#define EN_SENSOR_PM25
+#define EN_SENSOR_PM25
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
 #ifdef ZENREMOTE
 #undef EN_SENSOR_DHT
 #else
-//#define EN_SENSOR_DHT
+#define EN_SENSOR_DHT
 #endif
 
 // Common Data Type
@@ -94,7 +94,9 @@ typedef struct
   UC rptTimes                 :2;           // Sending message max repeat times [0..3]
   UC reserved1                :1;
   US senMap                   :16;          // Sensor Map
+#ifdef EN_PANEL_BUTTONS  
   Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
+#endif  
 } Config_t;
 
 extern Config_t gConfig;

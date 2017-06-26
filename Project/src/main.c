@@ -58,7 +58,7 @@ Connections:
 */
 
 // Xlight Application Identification
-#define XLA_VERSION               0x01
+#define XLA_VERSION               0x02
 #define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
 
 // Choose Product Name & Type
@@ -285,9 +285,11 @@ void LoadConfig()
     gConfig.senMap |= sensorDHT;
     gConfig.senMap |= sensorDUST;
     
+#ifdef EN_PANEL_BUTTONS    
     if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
       memset(gConfig.btnAction, 0x00, sizeof(Button_Action_t) * MAX_NUM_BUTTONS);
     }
+#endif    
 }
 
 void UpdateNodeAddress(void) {

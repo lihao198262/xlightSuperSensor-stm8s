@@ -168,6 +168,7 @@ void button_init()
 
 // Button Actions
 void Button_Action(uint8_t _op, uint8_t _btn) {
+#ifdef EN_PANEL_BUTTONS  
   if( _btn < MAX_NUM_BUTTONS ) {
     uint8_t lv_key;
     uint8_t lv_op = BF_GET(gConfig.btnAction[_btn][_op].action, 5, 3);
@@ -207,6 +208,7 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
       }
     }
   }
+#endif  
 }
 
 void btn_short_button_press(uint8_t _btn)

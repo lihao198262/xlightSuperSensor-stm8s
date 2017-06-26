@@ -74,6 +74,7 @@ uint8_t ParseProtocol(){
         gConfig.subID = rcvMsg.payload.data[0];
         break;
 
+#ifdef EN_PANEL_BUTTONS        
       case NCF_PAN_SET_BTN_1:
       case NCF_PAN_SET_BTN_2:
       case NCF_PAN_SET_BTN_3:
@@ -85,6 +86,7 @@ uint8_t ParseProtocol(){
           gConfig.btnAction[targetSubID][lv_op].keyMap = rcvMsg.payload.data[1];
         }
         break;
+#endif
         
       case NCF_DEV_MAX_NMRT:
         gConfig.rptTimes = rcvMsg.payload.data[0];
