@@ -20,5 +20,6 @@ bool DHT_checkData();
 extern bool dht_tem_ready;
 extern bool dht_hum_ready;
 extern bool dht_alive;
+extern u16 dht_readtick;
 extern u16 dht_tem_value;
 extern u16 dht_hum_value;

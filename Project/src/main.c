@@ -132,6 +132,7 @@ uint8_t mutex = 0;
 
 // Keep Alive Timer
 uint16_t mTimerKeepAlive = 0;
+uint8_t m_cntRFReset = 0;
 uint8_t m_cntRFSendFailed = 0;
 
 
@@ -153,7 +154,6 @@ uint8_t m_cntRFSendFailed = 0;
 
 #ifdef EN_SENSOR_DHT       
    uint16_t dht_tem_tick = 0;
-   uint16_t dht_hum_tick = 0;
    uint16_t dht_collect_tick = 0;
 #endif
 
@@ -283,6 +283,11 @@ void LoadConfig()
     gConfig.senMap |= sensorALS;
     gConfig.senMap |= sensorMIC;
     gConfig.senMap |= sensorDHT;
+    gConfig.senMap |= sensorDUST;
+    
+    if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
+      memset(gConfig.btnAction, 0x00, sizeof(Button_Action_t) * MAX_NUM_BUTTONS);
+    }
 }
 
 void UpdateNodeAddress(void) {
@@ -316,18 +321,33 @@ bool SendMyMessage() {
       WaitMutex(0x1FFFF);
       if (mutex == 1) {
         m_cntRFSendFailed = 0;
+        m_cntRFReset = 0;
         break; // sent sccessfully
-      } else if( m_cntRFSendFailed++ > MAX_RF_FAILED_TIME ) {
-        // Reset RF module
-        m_cntRFSendFailed = 0;
-        // RF24 Chip in low power
-        RF24L01_DeInit();
-        delay = 0x1FFF;
-        while(delay--)feed_wwdg();
-        RF24L01_init();
-        NRF2401_EnableIRQ();
-        UpdateNodeAddress();
-        continue;
+      } else {
+        m_cntRFSendFailed++;
+        if( m_cntRFSendFailed >= MAX_RF_FAILED_TIME ) {
+          m_cntRFSendFailed = 0;
+          m_cntRFReset++;
+          if( m_cntRFReset >= 3 ) {
+            // Cold Reset
+            WWDG->CR = 0x80;
+            m_cntRFReset = 0;
+            break;
+          } else if( m_cntRFReset >= 2 ) {
+            // Reset whole node
+            mStatus = SYS_RESET;
+            break;
+          }
+
+          // Reset RF module
+          //RF24L01_DeInit();
+          delay = 0x1FFF;
+          while(delay--)feed_wwdg();
+          RF24L01_init();
+          NRF2401_EnableIRQ();
+          UpdateNodeAddress();
+          continue;
+        }
       }
       
       //The transmission failed, Notes: mutex == 2 doesn't mean failed
@@ -357,6 +377,9 @@ void GotNodeID() {
 
 void GotPresented() {
   mStatus = SYS_RUNNING;
+  gConfig.swTimes = 0;
+  gIsChanged = TRUE;
+  SaveConfig();  
 }
 
 bool SayHelloToDevice(bool infinate) {
@@ -510,29 +533,38 @@ int main( void ) {
 #endif 
 
   // Init timer
-  //TIM4_10ms_handler = tmrProcess;
-  //Time4_Init();
+  TIM4_10ms_handler = tmrProcess;
+  Time4_Init();
   
 #ifdef EN_SENSOR_DHT
   DHT_init();
 #else 
   Infrared_Init();
 #endif  
+
+#ifdef EN_PANEL_BUTTONS
+  button_init();
+#endif  
   
   while(1) {
     // Go on only if NRF chip is presented
+    disableInterrupts();
     gConfig.present = 0;
     RF24L01_init();
-    while(!NRF24L01_Check())feed_wwdg();
+    u16 timeoutRFcheck = 0;
+    while(!NRF24L01_Check()) {
+      if( timeoutRFcheck > 50 ) {
+        WWDG->CR = 0x80;
+        break;
+      }
+      feed_wwdg();
+    }
     
     // IRQ
     NRF2401_EnableIRQ();
     
     // Must establish connection firstly
     SayHelloToDevice(TRUE);
-    gConfig.swTimes = 0;
-    gIsChanged = TRUE;
-    SaveConfig();
     
     while (mStatus == SYS_RUNNING) {
       
@@ -629,27 +661,18 @@ int main( void ) {
             DHT_checkData();
           }
           // Read & Send Data
-          if( !bMsgReady && (dht_tem_tick > SEN_READ_DHT || dht_hum_tick > SEN_READ_DHT) ) {
+          if( !bMsgReady && dht_tem_tick > SEN_READ_DHT ) {
             if( dht_tem_ready || dht_hum_ready ) {
-              if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) ) {
-                if( dht_tem_ready && dht_hum_ready && (pre_dht_t != dht_tem_value || dht_tem_tick > SEN_MAX_SEND_INTERVAL)
-                   && (pre_dht_h != dht_hum_value || dht_hum_tick > SEN_MAX_SEND_INTERVAL) ) {
-                  // Send detection message
-                  dht_tem_tick = 0;
-                  dht_hum_tick = 0;
+              if( (dht_tem_ready && pre_dht_t != dht_tem_value) || (dht_hum_ready && pre_dht_h != dht_hum_value) || dht_tem_tick > SEN_MAX_SEND_INTERVAL ) {
+                dht_tem_tick = 0;
+                if( dht_tem_ready && dht_hum_ready ) {
                   pre_dht_t = dht_tem_value;
                   pre_dht_h = dht_hum_value;
-                  Msg_SenDHT(dht_tem_value,dht_hum_value, 0);   
-                }
-                else if(dht_tem_ready && (pre_dht_t != dht_tem_value || dht_tem_tick > SEN_MAX_SEND_INTERVAL) )
-                {
-                  dht_tem_tick = 0;
+                  Msg_SenDHT(dht_tem_value,dht_hum_value, 0);
+                } else if( dht_tem_ready ) {
                   pre_dht_t = dht_tem_value;
                   Msg_SenDHT(dht_tem_value,dht_hum_value, 1);  
-                }
-                else if(dht_hum_ready && (pre_dht_h != dht_hum_value || dht_hum_tick > SEN_MAX_SEND_INTERVAL) )
-                {
-                  dht_hum_tick = 0;
+                } else {
                   pre_dht_h = dht_hum_value;
                   Msg_SenDHT(dht_tem_value,dht_hum_value, 2);  
                 }
@@ -660,15 +683,12 @@ int main( void ) {
 #endif
         
         // Idle Tick
-        /*
         if( !bMsgReady ) {
           // Check Keep Alive Timer
           if( mTimerKeepAlive > RTE_TM_KEEP_ALIVE ) {
-            Msg_DevBrightness(NODEID_GATEWAY);
+            Msg_Relay_KeyMap(NODEID_GATEWAY);
           }
         }
-        */
-        
       } // End of if( gConfig.state )
       
       // Send message if ready
@@ -688,26 +708,28 @@ void tmrProcess() {
   // Tick
   mTimerKeepAlive++;
 #ifdef EN_SENSOR_ALS
-   als_tick++;
-   als_checkData();
+  als_tick++;
+  if( als_tick % 10 == 0) als_checkData();
 #ifdef EN_SENSOR_MIC
-   mic_tick++;
-   mic_checkData();
+  mic_tick++;
+  if( mic_tick % 10 == 2) mic_checkData();
 #endif
 #endif
 #ifdef EN_SENSOR_PIR
-   pir_st++;
+  pir_st++;
 #endif
 #ifdef EN_SENSOR_PM25
-   pm25_tick++;
+  pm25_tick++;
 #endif
 #ifdef EN_SENSOR_DHT
-   dht_tem_tick++;
-   dht_hum_tick++;
-   dht_collect_tick++;
+  dht_tem_tick++;
+  dht_collect_tick++;
 #endif
-
-   // Send Keys
+  
+  // Ir-send timer count down
+  if( ir_send_delay > 0 ) ir_send_delay--;
+  
+  // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
       // Timer started

@@ -1,6 +1,19 @@
 
 #include "infrared.h"
+#include "timer_2.h"
 
+#define BUFFER_LEN 10
+unsigned long  send_buf[BUFFER_LEN];
+u8 send_buf_read_ptr = 0;
+u8 send_buf_write_ptr = 0;
+u8 send_buf_len = 0;
+u16 ir_send_delay = 0;
+
+#define BUFFER_AC_LEN 14
+uint8_t air_condition_buf[BUFFER_AC_LEN];
+u8 ac_buf_read_ptr = 0;
+u8 ac_buf_write_ptr = 0;
+u8 ac_buf_len = 0;
 
 /*******************************************************************************
  * 名称: TIM1_PWM_Init
@@ -114,6 +127,9 @@ void NEC_Infrared_Send(unsigned long data)
 {
   NEC_HDR_MARK
   NEC_HDR_SPACE
+    
+  //disableInterrupts();
+  
   for (int i = 0; i < 32; i++) {
     if (data & 0x80000000) {
       NEC_BIT_MARK
@@ -126,6 +142,9 @@ void NEC_Infrared_Send(unsigned long data)
     data <<= 1;
   }
   NEC_BIT_MARK
+  
+  //enableInterrupts();
+  
   Infrared_Send_Status(FALSE);
 }
 
@@ -150,6 +169,8 @@ void Haier_Infrared_Send(uint8_t data[], int len)
   HAIER_HDR_MARK
   HAIER_HDR_SPACE2
     
+  //disableInterrupts();
+  
   for(int i=0; i<len; i++)
   {
     uint8_t temp = data[i];
@@ -169,49 +190,11 @@ void Haier_Infrared_Send(uint8_t data[], int len)
   }
   
   HAIER_BIT_MARK
+    
+  //enableInterrupts();
+  
   Infrared_Send_Status(FALSE);
 }
-
-u32 TimingDelay; 
-
-/*******************************************************************************
- * 名称: TIM2_Time_Init
- * 功能: TIM2初始化操作 用作休眠计时
- * 形参: 无
- * 返回: 无
- * 说明: 无 
- ******************************************************************************/
-void TIM2_Time_Init(void)
-{
-  //1分频，向上计数，每50us定时中断一次， 重复计数器值为0 
-  TIM2_TimeBaseInit(TIM2_PRESCALER_1,800);
-  TIM2_SetCounter(0);                           /* 将计数器初值设为0 */
-  TIM2_ARRPreloadConfig(DISABLE);	        /* 预装载不使能 */
-  TIM2_ITConfig(TIM2_IT_UPDATE , ENABLE);	/* 计数器向上计数/向下计数溢出更新中断 */
-  TIM2_Cmd(ENABLE);			        /* 使能TIM1 */
-}
-
-/*******************************************************************************
- * 名称: delay_ms
- * 功能: 利用TIM1产生的1ms中断来计时
- * 形参: nms -> 计时值(ms)
- * 返回: 无
- * 说明: 无 
- ******************************************************************************/
-void Delay_50Us(u32 nTime)
-{
-  TimingDelay = nTime;
-  while(0 != TimingDelay)
-    ;
-}
-
-
-INTERRUPT_HANDLER(TIM2_UPD_OVF_BRK_IRQHandler, 13)
-{ 
-  TimingDelay--;
-  TIM2_ClearITPendingBit(TIM2_IT_UPDATE);
-}
-
 
 /*******************************************************************************
  * 名称: Infrared_Init()
@@ -224,55 +207,63 @@ void Infrared_Init(void)
 {
   TIM1_PWM_Init();
 
-  TIM2_Time_Init();
+  // Init Timer
+  TIM2_Init();
+  
+  ir_send_delay = 0;
+  send_buf_read_ptr = 0;
+  send_buf_write_ptr = 0;
+  send_buf_len = 0;
+  
+  ac_buf_read_ptr = 0;
+  ac_buf_write_ptr = 0;
+  ac_buf_len = 0;
   
   enableInterrupts(); 
 }
 
-#define BUFFER_LEN 10
-unsigned long  send_buf[BUFFER_LEN];
-u16 send_buf_len = 0;
-
-#define BUFFER_AC_LEN 14
-uint8_t air_condition_buf[BUFFER_AC_LEN];
-bool isACNeedToSend = FALSE;
-
-
-void Set_Send_Buf(u32 *buf, u16 len)
+bool Set_Send_Buf(u32 *buf, u8 len)
 {
-  send_buf_len = len < BUFFER_LEN ? len : BUFFER_LEN;
-  for(u16 i=0; i<send_buf_len; i++)
-  {
-    send_buf[i] = buf[i];
-  }
-}
-
-void Set_AC_Buf(uint8_t *buf, u16 len)
-{
-  u16 send_ac_buf_len = len < BUFFER_AC_LEN ? len : BUFFER_AC_LEN;
-  for(u16 i=0; i<send_ac_buf_len; i++)
-  {
-    air_condition_buf[i] = buf[i];
-  }
+  if( send_buf_len + len > BUFFER_LEN ) return FALSE;
   
-  isACNeedToSend = TRUE;
+  for( u8 i=0; i<len; i++ ) {
+    send_buf[send_buf_write_ptr++] = buf[i];
+    send_buf_write_ptr %= BUFFER_LEN;
+  }
+  send_buf_len += len;
+  return TRUE;
 }
 
-
+bool Set_AC_Buf(uint8_t *buf, u8 len)
+{
+  if( ac_buf_len + len > BUFFER_AC_LEN ) return FALSE;
+  
+  for( u8 i=0; i<len; i++ ) {
+    air_condition_buf[ac_buf_write_ptr++] = buf[i];
+    ac_buf_write_ptr %= BUFFER_AC_LEN;
+  }
+  ac_buf_len += len;
+  return TRUE;
+}
 
 void IR_Send()
 {
-  for(u16 i=0; i<send_buf_len; i++)
-  {
-    NEC_Infrared_Send(send_buf[i]);
-    if(i+1 < send_buf_len) Delay_50Us(2000);
-    
+  // Send one element each time
+  if( send_buf_len > 0 && ir_send_delay == 0 ) {
+    NEC_Infrared_Send(send_buf[send_buf_read_ptr++]);
+    send_buf_read_ptr %= BUFFER_LEN;
+    send_buf_len--;
+    // Start timer: delay 100ms
+    if( send_buf_len > 0 ) {
+      ir_send_delay = 10;
+    }
   }
-  send_buf_len = 0;
   
-  if(isACNeedToSend) 
-  {
-    Haier_Infrared_Send(air_condition_buf, BUFFER_AC_LEN);
-    isACNeedToSend = FALSE;
+  // Send all data at a time
+  if( ac_buf_len > 0 ) {
+    Haier_Infrared_Send(air_condition_buf, ac_buf_len);
+    ac_buf_write_ptr = 0;
+    ac_buf_read_ptr = 0;
+    ac_buf_len = 0;
   }
 }

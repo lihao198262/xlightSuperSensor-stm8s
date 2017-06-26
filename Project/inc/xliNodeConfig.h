@@ -9,10 +9,18 @@
 #define NCF_QUERY                       0       // Query NCF, payload length = 0 (query) or n (ack
 #define NCF_MAP_SENSOR                  1       // Sensor Bitmap, payload length = 2
 #define NCF_MAP_FUNC                    2       // Function Bitmap, payload length = 2
+
 #define NCF_DEV_ASSOCIATE               10      // Associate node to device(s), payload length = 2 to 8, a device per uint16_t
 #define NCF_DEV_EN_SDTM                 11      // Simple Direct Test Mode flag, payload length = 2
 #define NCF_DEV_MAX_NMRT                12      // Max. Node Message Repeat Times, payload length = 2
 #define NCF_DEV_SET_SUBID               13      // Set device subid, payload length = 2
+#define NCF_DEV_CONFIG_MODE             14      // Put Device into Config Mode, payload length = 2
+
+#define NCF_PAN_SET_BTN_1               20      // Set Panel Button Action, payload length = 2
+#define NCF_PAN_SET_BTN_2               21      // Set Panel Button Action, payload length = 2
+#define NCF_PAN_SET_BTN_3               22      // Set Panel Button Action, payload length = 2
+#define NCF_PAN_SET_BTN_4               23      // Set Panel Button Action, payload length = 2
+
 #define NCF_DATA_ALS_RANGE              50      // Lower and upper threshholds of ALS, payload length = 2
 #define NCF_DATA_TEMP_RANGE             51      // Tempreture threshholds, payload length = 2
 #define NCF_DATA_HUM_RANGE              52      // Humidity threshholds, payload length = 2
@@ -39,6 +47,21 @@
 #define KEY_DELI_VLONG_PAUSE            '~'      // Very long pause, 5s
 #define KEY_DELI_SAME_TIME              '&'      // Press two keys at the same time
 
+// Panel Button Operation(bit:7,6,5), Object(bit:4,3,2) & Action(bit:1,0)
+#define BTN_OP_SHORT_PRESS              0       // Short press
+#define BTN_OP_DBL_PRESS                1       // Double press
+#define BTN_OP_LONG_HOLD                2       // Long hold
+#define BTN_OP_LONG_RELEASE             3       // Long hold-release
+#define BTN_OP_VLONG_HOLD               4       // Very long hold
+#define BTN_OP_VLONG_RELEASE            5       // Very long hold-release
+
+#define BTN_OBJ_DEFAULT_KEY             0       // corresponding relay key
+#define BTN_OBJ_SCAN_KEY_MAP            1       // scan key map and act on keys one by one
+#define BTN_OBJ_LOOP_KEY_MAP            2       // get one key from key map, act on it, and move to the next key
+
+#define BTN_ACT_TOGGLE                  0       // toggle relay key
+#define BTN_ACT_ON                      1       // turn on relay key
+#define BTN_ACT_OFF                     2       // turn off relay key
 
 typedef enum
 {

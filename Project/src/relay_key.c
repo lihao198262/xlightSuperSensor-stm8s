@@ -94,7 +94,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_1_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_1_PIN_PORT, SOFT_KEY_1_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 0, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
 
@@ -102,7 +102,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_2_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_2_PIN_PORT, SOFT_KEY_2_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 1, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
 
@@ -110,7 +110,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_3_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_3_PIN_PORT, SOFT_KEY_3_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 2, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
 
@@ -118,7 +118,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_4_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_4_PIN_PORT, SOFT_KEY_4_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 3, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
 
@@ -126,7 +126,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_5_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_5_PIN_PORT, SOFT_KEY_5_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 4, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
 
@@ -134,7 +134,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_6_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_6_PIN_PORT, SOFT_KEY_6_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 5, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
 
@@ -142,7 +142,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_7_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_7_PIN_PORT, SOFT_KEY_7_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 6, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
 
@@ -150,7 +150,7 @@ bool relay_set_key(u8 _key, bool _on)
 #ifdef SOFT_KEY_8_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_8_PIN_PORT, SOFT_KEY_8_PIN_ID, _on);
   BF_SET(relay_key_value, _on, 7, 1);
-  rc = _on;
+  rc = TRUE;
 #endif    
     break;
   }

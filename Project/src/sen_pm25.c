@@ -6,7 +6,7 @@
 #define PM25_MESSAGE_TAIL       0xFF
 #define PM25_MESSAGE_LEN        6
 #define PM25_K_CONSTANT         1000
-#define PM25_MA_NUM             300
+#define PM25_MA_NUM             250
 //#define PM25_MAX_DEVIATION      30              // +-30%
 
 u8 pm_data[7];   // 7 bytes for data store

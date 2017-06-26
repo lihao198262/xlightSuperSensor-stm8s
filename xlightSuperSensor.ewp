@@ -1680,6 +1680,9 @@
         <name>$PROJ_DIR$\Project\inc\ADC1Dev.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\button.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\infrared.h</name>
       </file>
       <file>
@@ -1719,6 +1722,9 @@
         <name>$PROJ_DIR$\Project\inc\stm8s_it.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\timer_2.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\timer_4.h</name>
       </file>
       <file>
@@ -1732,6 +1738,9 @@
       <name>src</name>
       <file>
         <name>$PROJ_DIR$\Project\src\ADC1Dev.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\button.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\infrared.c</name>
@@ -1765,6 +1774,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\sen_pm25.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\Project\src\timer_2.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\timer_4.c</name>
