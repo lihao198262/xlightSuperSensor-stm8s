@@ -101,7 +101,7 @@ Connections:
 #define SEN_READ_ALS                    200    // about 2s (200 * 10ms)
 #define SEN_READ_MIC                    200    // about 2s (200 * 10ms)
 #define SEN_READ_PIR                    10     // about 100ms (10 * 10ms)
-#define SEN_READ_IRKEY                  10     // about 500ms (50 * 10ms)
+#define SEN_READ_IRKEY                  50     // about 500ms (50 * 10ms)
 #define SEN_READ_PM25                   400    // about 4s (400 * 10ms)
 #define SEN_READ_DHT                    300    // about 3s (300 * 10ms)
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)

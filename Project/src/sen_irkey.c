@@ -1,6 +1,6 @@
 #include <stm8s.h>
-
 #include "sen_irkey.h"
+#include "MyMessage.h"
 
 // IR Key sensor pin map
 #define IRKEY_PORT              (GPIOB)
@@ -15,11 +15,9 @@ void irk_init()
 
 u8 irk_read()
 {
-  u8 keyBitmap;
-  keyBitmap = GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN3);
-  keyBitmap <<= 1;
-  keyBitmap |= GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN2);
-  keyBitmap <<= 1;
-  keyBitmap |= GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN1);
+  u8 keyBitmap = 0;
+  BF_SET(keyBitmap, GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN1), 0, 1);
+  BF_SET(keyBitmap, GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN2), 1, 1);
+  BF_SET(keyBitmap, GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN3), 2, 1);
   return(keyBitmap);
 }
