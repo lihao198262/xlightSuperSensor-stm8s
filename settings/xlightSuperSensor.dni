@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=1662114877
+Checksum=598176846
 [CallStack]
 ShowArgs=0
 [Disassembly]
@@ -20,18 +20,17 @@ GraphEnabled=0
 ShowTimeLog=1
 ShowTimeSum=1
 [Breakpoints]
-Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.253.5" 1 0 0 0 "" 0 ""
+Bp0=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.262.5" 1 0 0 0 "" 0 ""
 Bp1=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.157.9" 1 0 0 0 "" 0 ""
 Bp2=_ "STD_CODE" "{$PROJ_DIR$\Project\src\keySimulator.c}.112.3" 1 0 0 0 "" 0 ""
 Bp3=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.165.9" 1 0 0 0 "" 0 ""
 Bp4=_ "STD_CODE" "{$PROJ_DIR$\Project\src\button.c}.175.5" 0 0 0 0 "" 0 ""
-Bp5=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.335.13" 1 0 0 0 "" 0 ""
-Bp6=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.340.13" 1 0 0 0 "" 0 ""
-Bp7=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.111.7" 1 0 0 0 "" 0 ""
-Bp8=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.111.7" 1 0 0 0 "" 0 ""
-Bp9=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.559.9" 1 0 0 0 "" 0 ""
-Bp10=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.348.11" 1 0 0 0 "" 0 ""
-Count=11
+Bp5=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.351.13" 1 0 0 0 "" 0 ""
+Bp6=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.356.13" 1 0 0 0 "" 0 ""
+Bp7=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.364.11" 1 0 0 0 "" 0 ""
+Bp8=_ "STD_CODE" "{$PROJ_DIR$\Project\src\ProtocolParser.c}.137.5" 1 0 0 0 "" 0 ""
+Bp9=_ "STD_CODE" "{$PROJ_DIR$\Project\src\main.c}.581.12" 1 0 0 0 "" 0 ""
+Count=10
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""

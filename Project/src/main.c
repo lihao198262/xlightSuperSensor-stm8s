@@ -291,6 +291,9 @@ void LoadConfig()
     // Start ZenSensor
     gConfig.state = 1;
     
+    // Notes: only for Airpuritifier
+    gConfig.subID = 2;
+    
     // Engineering code
     gConfig.senMap |= sensorALS;
     gConfig.senMap |= sensorMIC;

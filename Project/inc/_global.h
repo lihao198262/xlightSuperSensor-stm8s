@@ -18,17 +18,17 @@
 
 // Include Sensors
 /// Comment off line to disable sensor
-#define EN_SENSOR_ALS
+//#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
-#define EN_SENSOR_PM25
+//#define EN_SENSOR_PM25
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
 #ifdef ZENREMOTE
 #undef EN_SENSOR_DHT
 #else
-#define EN_SENSOR_DHT
+//#define EN_SENSOR_DHT
 #endif
 
 // Common Data Type
