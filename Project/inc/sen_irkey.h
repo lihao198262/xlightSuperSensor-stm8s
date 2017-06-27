@@ -2,6 +2,6 @@
 #define __SEN_IRKEY_H
 
 void irk_init();
-u8 irk_read();
+uint8_t irk_read();
 
 #endif /* __SEN_IRKEY_H */
