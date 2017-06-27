@@ -8,11 +8,6 @@
 #define IRKEY_PIN2              (GPIO_PIN_4)
 #define IRKEY_PIN3              (GPIO_PIN_3)
 
-// Get Key sensor pin input
-#define pinIRKey1               ((BitStatus)(IRKEY_PORT->IDR & (uint8_t)IRKEY_PIN1))
-#define pinIRKey2               ((BitStatus)(IRKEY_PORT->IDR & (uint8_t)IRKEY_PIN2))
-#define pinIRKey3               ((BitStatus)(IRKEY_PORT->IDR & (uint8_t)IRKEY_PIN3))
-
 void irk_init()
 {
   GPIO_Init(IRKEY_PORT, IRKEY_PIN1 | IRKEY_PIN2 | IRKEY_PIN3, GPIO_MODE_IN_PU_NO_IT);
@@ -20,6 +15,11 @@ void irk_init()
 
 u8 irk_read()
 {
-  u8 keyBitmap = pinIRKey1 | pinIRKey2 | pinIRKey3;
+  u8 keyBitmap;
+  keyBitmap = GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN3);
+  keyBitmap <<= 1;
+  keyBitmap |= GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN2);
+  keyBitmap <<= 1;
+  keyBitmap |= GPIO_ReadInputPin(IRKEY_PORT, IRKEY_PIN1);
   return(keyBitmap);
 }
