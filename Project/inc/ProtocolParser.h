@@ -27,6 +27,10 @@ void Msg_SenMIC(uint16_t _value);
 void Msg_SenPIR(bool _sw);
 #endif
 
+#ifdef EN_SENSOR_IRKEY
+void Msg_SenIRKey(uint8_t _sw);
+#endif
+
 #ifdef EN_SENSOR_PM25
 void Msg_SenPM25(uint16_t _value);
 #endif

@@ -75,6 +75,7 @@ typedef enum
   sensorDUST            = ((uint16_t)0x0080),
   sensorLEAK            = ((uint16_t)0x0100),
   sensorBEAT            = ((uint16_t)0x0200),
+  sensorIRKey           = ((uint16_t)0x8000),
   sensor_All            = ((uint8_t)0xFFFF)
 }sensors_bit_t;
 

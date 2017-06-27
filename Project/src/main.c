@@ -25,6 +25,10 @@
 #include "sen_pir.h"
 #endif
 
+#ifdef EN_SENSOR_IRKEY
+#include "sen_irkey.h"
+#endif
+
 #ifdef EN_SENSOR_PM25
 #include "sen_pm25.h"
 #endif
@@ -97,6 +101,7 @@ Connections:
 #define SEN_READ_ALS                    200    // about 2s (200 * 10ms)
 #define SEN_READ_MIC                    200    // about 2s (200 * 10ms)
 #define SEN_READ_PIR                    10     // about 100ms (10 * 10ms)
+#define SEN_READ_IRKEY                  10     // about 500ms (50 * 10ms)
 #define SEN_READ_PM25                   400    // about 4s (400 * 10ms)
 #define SEN_READ_DHT                    300    // about 3s (300 * 10ms)
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
@@ -147,7 +152,11 @@ uint8_t m_cntRFSendFailed = 0;
 #ifdef EN_SENSOR_PIR
    uint16_t pir_tick = 0;
 #endif
-   
+
+#ifdef EN_SENSOR_IRKEY
+   uint16_t irk_tick = 0;
+#endif
+
 #ifdef EN_SENSOR_PM25       
    uint16_t pm25_tick = 0;
 #endif 
@@ -269,6 +278,9 @@ void LoadConfig()
 #ifdef EN_SENSOR_PIR
       gConfig.senMap |= sensorPIR;
 #endif
+#ifdef EN_SENSOR_IRKEY
+      gConfig.senMap |= sensorIRKey;
+#endif      
 #ifdef EN_SENSOR_DHT
       gConfig.senMap |= sensorDHT;
 #endif
@@ -284,6 +296,7 @@ void LoadConfig()
     gConfig.senMap |= sensorMIC;
     gConfig.senMap |= sensorDHT;
     gConfig.senMap |= sensorDUST;
+    gConfig.senMap |= sensorIRKey;
     
 #ifdef EN_PANEL_BUTTONS    
     if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
@@ -483,6 +496,11 @@ int main( void ) {
    bool pir_st;
 #endif
    
+#ifdef EN_SENSOR_IRKEY
+   uint8_t pre_irk_st = 0xFF;
+   uint8_t irk_st;
+#endif
+
 #ifdef EN_SENSOR_PM25       
    uint16_t lv_pm2_5 = 0;
    uint8_t pm25_alivetick = 0;
@@ -524,6 +542,9 @@ int main( void ) {
 #endif
 #ifdef EN_SENSOR_PIR
   pir_init();
+#endif
+#ifdef EN_SENSOR_IRKEY
+  irk_init();
 #endif
 #ifdef EN_SENSOR_PM25
   pm25_init();
@@ -591,6 +612,22 @@ int main( void ) {
               // Send detection message
               pre_pir_st = pir_st;
               Msg_SenPIR(pre_pir_st);
+            }
+          }
+        }
+#endif
+
+#ifdef EN_SENSOR_IRKEY
+        /// Read IRKeys
+        if( gConfig.senMap & sensorIRKey ) {
+          if( !bMsgReady && irk_tick > SEN_READ_IRKEY ) {
+            irk_st = irk_read();
+            if( pre_irk_st != irk_st || irk_tick > SEN_MAX_SEND_INTERVAL ) {
+              // Reset read timer
+              irk_tick = 0;
+              // Send detection message
+              pre_irk_st = irk_st;
+              Msg_SenIRKey(pre_irk_st);
             }
           }
         }
@@ -718,8 +755,11 @@ void tmrProcess() {
 #endif
 #endif
 #ifdef EN_SENSOR_PIR
-  pir_st++;
+  pir_tick++;
 #endif
+#ifdef EN_SENSOR_IRKEY
+  irk_tick++;
+#endif  
 #ifdef EN_SENSOR_PM25
   pm25_tick++;
 #endif

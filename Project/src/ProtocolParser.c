@@ -317,6 +317,17 @@ void Msg_SenMIC(uint16_t _value) {
 #ifdef EN_SENSOR_PIR
 // Prepare PIR message
 void Msg_SenPIR(bool _sw) {
+  build(NODEID_GATEWAY, S_MOTION, C_PRESENTATION, V_STATUS, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(1);
+  sndMsg.payload.data[0] = _sw;
+  bMsgReady = 1;
+}
+#endif
+
+#ifdef EN_SENSOR_IRKEY
+// Prepare IR Key Bitmap message
+void Msg_SenIRKey(uint8_t _sw) {
   build(NODEID_GATEWAY, S_IR, C_PRESENTATION, V_STATUS, 0, 0);
   moSetPayloadType(P_BYTE);
   moSetLength(1);
@@ -324,7 +335,7 @@ void Msg_SenPIR(bool _sw) {
   bMsgReady = 1;
 }
 #endif
-  
+
 #ifdef EN_SENSOR_PM25
 // Prepare PM2.5 message
 void Msg_SenPM25(uint16_t _value) {
