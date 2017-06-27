@@ -97,6 +97,12 @@ typedef struct
   Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
 } Config_t;
 
+//////////// zhangqiaoli add for loop relay ////////////////////////
+extern Button_Action_t last_btn_action;
+extern u8 last_relay_key_index;
+extern u8 relay_loop_tick;
+//////////// zhangqiaoli add for loop relay ////////////////////////
+
 extern Config_t gConfig;
 extern bool gIsChanged;
 extern uint8_t _uniqueID[UNIQUE_ID_LEN];
@@ -106,6 +112,7 @@ void GotNodeID();
 void GotPresented();
 bool SendMyMessage();
 void tmrProcess();
+void tmr1msProcess();
 void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _on);
 
 #define IS_MINE_SUBID(nSID)             ((nSID) == 0 || ((nSID) & gConfig.subID))

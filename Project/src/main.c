@@ -534,6 +534,8 @@ int main( void ) {
 
   // Init timer
   TIM4_10ms_handler = tmrProcess;
+  // Init timer
+  TIM4_1ms_handler = tmr1msProcess;
   Time4_Init();
   
 #ifdef EN_SENSOR_DHT
@@ -736,6 +738,11 @@ void tmrProcess() {
       ScanKeyBuffer(i);
     }
   }
+}
+
+// Execute timer 1ms operations
+void tmr1msProcess() {
+  relay_loop_tick++;
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
