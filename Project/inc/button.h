@@ -39,7 +39,7 @@ void button_init(void);
 //////////// zhangqiaoli add for loop relay ////////////////////////
 extern Button_Action_t last_btn_action;
 extern uint8_t last_relay_key_index;
-extern uint8_t relay_loop_tick;
+extern uint16_t relay_loop_tick;
 extern uint8_t last_btn;
 //////////// zhangqiaoli add for loop relay ////////////////////////
 

@@ -8,6 +8,7 @@
 #include "relay_key.h"
 #include "keySimulator.h"
 #include "infrared.h"
+#include "button.h"
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
 #include "ADC1Dev.h"
@@ -102,7 +103,7 @@ Connections:
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 // For Gu'an Demo Classroom
-#define ONOFF_RESET_TIMES               10     // on / off times to reset device, regular value is 3
+#define ONOFF_RESET_TIMES               300     // on / off times to reset device, regular value is 3
 
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
@@ -466,6 +467,40 @@ bool SayHelloToDevice(bool infinate) {
   return TRUE;
 }
 
+////////////////////////////zql relay test //////////////////////////
+void configbuttontest() {
+  // btn 0(center)
+  gConfig.btnAction[0][0].action = 0x00; // short press - direct - toggle
+  gConfig.btnAction[0][0].keyMap = 0xAA; // relay 1010 1010
+  // btn 0(center)
+  gConfig.btnAction[0][1].action = 0x21; // double press - direct - turn on
+  gConfig.btnAction[0][1].keyMap = 0xAA; // relay 1010 1010
+  // btn 0(center)
+  gConfig.btnAction[0][2].action = 0x42; // long press - direct - turn off
+  gConfig.btnAction[0][2].keyMap = 0xAA; // relay 1010 1010
+  
+   // btn 1(up)
+  gConfig.btnAction[1][0].action = 0x04; // short press - scan - toggle
+  gConfig.btnAction[1][0].keyMap = 0xAA; // relay 1010 1010
+  // btn 1(up)
+  gConfig.btnAction[1][1].action = 0x25; // double press - scan - turn on
+  gConfig.btnAction[1][1].keyMap = 0xAA; // relay 1010 1010
+  // btn 1(up)
+  gConfig.btnAction[1][2].action = 0x46; // long press - scan - turn off
+  gConfig.btnAction[1][2].keyMap = 0xAA; // relay 1010 1010
+  
+  // btn 2(down)
+  gConfig.btnAction[2][0].action = 0x08; // short press - loop - toggle
+  gConfig.btnAction[2][0].keyMap = 0xAA; // relay 1010 1010
+  // btn 2(down)
+  gConfig.btnAction[2][1].action = 0x29; // double press - loop - turn on
+  gConfig.btnAction[2][1].keyMap = 0xAA; // relay 1010 1010
+  // btn 2(down)
+  gConfig.btnAction[2][2].action = 0x4A; // long press - loop - turn off
+  gConfig.btnAction[2][2].keyMap = 0xAA; // relay 1010 1010
+}
+////////////////////////////zql relay test //////////////////////////
+
 int main( void ) {
 
 #ifdef EN_SENSOR_ALS
@@ -534,8 +569,6 @@ int main( void ) {
 
   // Init timer
   TIM4_10ms_handler = tmrProcess;
-  // Init timer
-  TIM4_1ms_handler = tmr1msProcess;
   Time4_Init();
   
 #ifdef EN_SENSOR_DHT
@@ -546,6 +579,9 @@ int main( void ) {
 
 #ifdef EN_PANEL_BUTTONS
   button_init();
+  //////////////// zql relay test//////////////////
+  configbuttontest();
+  //////////////// zql relay test//////////////////
 #endif  
   
   while(1) {
@@ -564,10 +600,8 @@ int main( void ) {
     
     // IRQ
     NRF2401_EnableIRQ();
-    
     // Must establish connection firstly
     SayHelloToDevice(TRUE);
-    
     while (mStatus == SYS_RUNNING) {
       
       // Feed the Watchdog
@@ -738,11 +772,9 @@ void tmrProcess() {
       ScanKeyBuffer(i);
     }
   }
-}
-
-// Execute timer 1ms operations
-void tmr1msProcess() {
+  //////zql add for relay key//////////////
   relay_loop_tick++;
+  //////zql add for relay key//////////////
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {

@@ -18,7 +18,8 @@ LEDs
 #include "relay_key.h"
 #include "xliNodeConfig.h"
 #include "MyMessage.h"
-
+#include "ProtocolParser.h"
+#include "relay_key.h"
 //---------------------------------------------------
 // PIN Map
 //---------------------------------------------------
@@ -59,10 +60,10 @@ static uint8_t button_first_detect_status = 0xFF;
 static uint8_t m_timer_id_debonce_detet;
 
 //////////// zhangqiaoli add for loop relay ////////////////////////
-#define BUTTON_TIMEOUT            5
+#define BUTTON_TIMEOUT            1000          // The unit is 10 ms, so the duration is 5s.
 Button_Action_t last_btn_action;
 uint8_t last_relay_key_index = 0;
-uint8_t relay_loop_tick = 0;
+uint16_t relay_loop_tick = 0;
 uint8_t last_btn = 0;
 //////////// zhangqiaoli add for loop relay ////////////////////////
 
@@ -172,6 +173,15 @@ void button_init()
     timer_create(&m_timer_id_double_btn_detet[_btn], _btn, double_btn_timeout_handler);
   }
   timer_create(&m_timer_id_debonce_detet, 0, btn_debonce_timeout_handler);
+  
+  //////////// zhangqiaoli add for loop relay ////////////////////////
+  last_btn_action.action = 0x00;
+  last_btn_action.keyMap = 0x00;
+  last_relay_key_index = 0;
+  relay_loop_tick = 0;
+  last_btn = 0;
+//////////// zhangqiaoli add for loop relay ////////////////////////
+  
 }
 
 uint8_t GetNextIndex(uint8_t relay_key_map,uint8_t index)
@@ -181,8 +191,12 @@ uint8_t GetNextIndex(uint8_t relay_key_map,uint8_t index)
   uint8_t nextindex = 0;
   for( uint8_t idx = index; idx < 8; idx++ ) {
     // Check key map
-    if( BF_GET(relay_key_map, idx, 1) ) {
-      nextindex = idx+1;
+    if( BF_GET(relay_key_map, idx, 1) ) {      
+      if(IsValidRelaykey(idx))
+      {
+        nextindex = idx+1;
+        break;
+      }
     }
   }
   return nextindex;
@@ -191,7 +205,7 @@ uint8_t GetNextIndex(uint8_t relay_key_map,uint8_t index)
 uint8_t LoopAll(uint8_t relay_key_map,uint8_t lv_act)
 {
   uint8_t lv_key;
-  uint8_t lv_onoff;
+  bool lv_onoff;
   for( uint8_t idx = 0; idx < 8; idx++ ) {
     // Check key map
     if( BF_GET(relay_key_map, idx, 1) ) {
@@ -203,8 +217,48 @@ uint8_t LoopAll(uint8_t relay_key_map,uint8_t lv_act)
       }
     }
   }
-  last_relay_key_index = 0;
-  relay_loop_tick = 0;
+}
+
+uint8_t LoopOne(uint8_t relay_key_map,uint8_t lv_act,uint8_t index)
+{
+  // index range(0-8)  0-all n-on bit n
+  uint8_t lv_key;
+  bool lv_onoff;
+  lv_key = index + '0';
+  if(lv_act == BTN_ACT_TOGGLE)
+  { // toggle
+    lv_key = index + '0';    
+    lv_onoff = !relay_get_key(lv_key);    
+    if( relay_set_key(lv_key, lv_onoff) ) {
+      Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);         
+      SendMyMessage();
+    }
+  }
+  else
+  { 
+    lv_onoff = (BTN_ACT_ON == lv_act);
+    for( uint8_t idx = 0; idx < 8; idx++ ) {
+      // Check key map
+      if( BF_GET(relay_key_map, idx, 1) ) {
+        if( idx+1 == index)
+        { 
+          lv_key = index + '0';        
+          if( relay_set_key(lv_key, lv_onoff) ) {
+            Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);         
+            SendMyMessage();
+          }
+        }
+        else
+        {
+          lv_key = idx + '1';
+          if( relay_set_key(lv_key, !lv_onoff) ) {
+            Msg_Relay_Ack(NODEID_GATEWAY, !lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+            SendMyMessage();
+          }
+        }
+      }
+    }
+  }
 }
 
 // Button Actions
@@ -241,7 +295,7 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
         // ToDo:... leave this to Qiaoli
         /// get one key from key map, act on it, and move to the next key
         if(lastobj == BTN_OBJ_LOOP_KEY_MAP && lastop == _op && lastact == lv_act && last_btn == _btn)
-        { 
+        {  // 不能完全依靠lastop == _op 和 last_btn == _btn 来判断，因为程序运行过程中有可能改变配置，导致同样的按钮同样的按钮操作控制动作不相同
           uint8_t key_map_index = last_relay_key_index;
           if(relay_loop_tick <= BUTTON_TIMEOUT )
           { // loop from next index
@@ -250,24 +304,24 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
           else
           { // loop from last index        
           }
+          
           if(key_map_index == 0)
           { // all
             LoopAll(gConfig.btnAction[_btn][_op].keyMap,lv_act);
+            last_relay_key_index = 0;
           }
           else
           { // set relay on bit key_map_index
-            lv_key = key_map_index + '0';
-            lv_onoff = (lv_act == BTN_ACT_TOGGLE ? !relay_get_key(lv_key) : BTN_ACT_ON == lv_act);
-            if( relay_set_key(lv_key, lv_onoff) ) {
-              Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
-              SendMyMessage();
-            }
+            LoopOne(gConfig.btnAction[_btn][_op].keyMap,lv_act,key_map_index);
           }
+          last_relay_key_index = key_map_index;
         }
         else
         { // loop from start(all)
           LoopAll(gConfig.btnAction[_btn][_op].keyMap,lv_act);
+          last_relay_key_index = 0;
         }
+        relay_loop_tick = 0;
         break;
 
       default:

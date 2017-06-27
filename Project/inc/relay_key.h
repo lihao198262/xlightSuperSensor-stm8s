@@ -4,6 +4,7 @@
 void relay_key_init();
 bool relay_get_key(u8 _key);
 bool relay_set_key(u8 _key, bool _on);
+bool IsValidRelaykey(u8 index);
 
 extern u8 relay_key_value;
 
