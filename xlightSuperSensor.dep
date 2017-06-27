@@ -828,6 +828,10 @@
       </outputs>
       <inputs>
         <tool>
+          <name>BICOMP</name>
+          <file> 5 92 2 29 86 12 87 0 128 4 144 61 108 1 107 3 18 111 70 116 13 31</file>
+        </tool>
+        <tool>
           <name>ICCSTM8</name>
           <file> 92 61 1 87 107 2 3 0 18 86 111 128 70 5 116 4 12 13 31 29 108 144</file>
         </tool>

@@ -20,5 +20,6 @@ void irk_init()
 
 u8 irk_read()
 {
-  return(pinIRKey1 | pinIRKey2 | pinIRKey3);
+  u8 keyBitmap = pinIRKey1 | pinIRKey2 | pinIRKey3;
+  return(keyBitmap);
 }
