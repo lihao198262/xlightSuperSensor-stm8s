@@ -773,7 +773,7 @@ void tmrProcess() {
     }
   }
   //////zql add for relay key//////////////
-  relay_loop_tick++;
+  if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
 }
 
