@@ -326,6 +326,7 @@ uint8_t LoopOne(uint8_t relay_key_map,uint8_t lv_act,uint8_t index)
 
 // Button Actions
 void Button_Action(uint8_t _op, uint8_t _btn) {
+#ifdef EN_PANEL_BUTTONS  
   if( _btn < MAX_NUM_BUTTONS ) {
     uint8_t lv_key;
     uint8_t lv_op = BF_GET(gConfig.btnAction[_btn][_op].action, 5, 3);
@@ -395,6 +396,7 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
       //////////// zhangqiaoli add for loop relay ////////////////////////
     }
   }
+#endif  
 }
 
 void btn_short_button_press(uint8_t _btn)

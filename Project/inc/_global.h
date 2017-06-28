@@ -8,7 +8,13 @@
 
 /* Exported types ------------------------------------------------------------*/
 /// Comment off line to disable panel buttons
-#define EN_PANEL_BUTTONS
+//#define EN_PANEL_BUTTONS
+/// Comment off line to disable Relay key input
+#define EN_SENSOR_IRKEY
+// Notes: EN_PANEL_BUTTONS & EN_SENSOR_IRKEY can't exist at the same time
+#ifdef EN_PANEL_BUTTONS
+#undef EN_SENSOR_IRKEY
+#endif
 
 // Include Sensors
 /// Comment off line to disable sensor
@@ -94,7 +100,9 @@ typedef struct
   UC rptTimes                 :2;           // Sending message max repeat times [0..3]
   UC reserved1                :1;
   US senMap                   :16;          // Sensor Map
+#ifdef EN_PANEL_BUTTONS  
   Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
+#endif  
 } Config_t;
 
 extern Config_t gConfig;
