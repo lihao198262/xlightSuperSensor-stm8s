@@ -61,10 +61,10 @@ static uint8_t m_timer_id_debonce_detet;
 
 //////////// zhangqiaoli add for loop relay ////////////////////////
 #define BUTTON_TIMEOUT            1000          // The unit is 10 ms, so the duration is 5s.
-Button_Action_t last_btn_action;
 uint8_t last_relay_key_index = 0;
 uint16_t relay_loop_tick = 0;
 uint8_t last_btn = 0;
+uint8_t last_op = 0;
 //////////// zhangqiaoli add for loop relay ////////////////////////
 
 void app_button_event_handler(uint8_t _btn, button_event_t button_event);
@@ -175,11 +175,10 @@ void button_init()
   timer_create(&m_timer_id_debonce_detet, 0, btn_debonce_timeout_handler);
   
   //////////// zhangqiaoli add for loop relay ////////////////////////
-  last_btn_action.action = 0x00;
-  last_btn_action.keyMap = 0x00;
   last_relay_key_index = 0;
   relay_loop_tick = 0;
   last_btn = 0;
+  last_op = 0;
 //////////// zhangqiaoli add for loop relay ////////////////////////
   
 }
@@ -202,18 +201,88 @@ uint8_t GetNextIndex(uint8_t relay_key_map,uint8_t index)
   return nextindex;
 }
 
-uint8_t LoopAll(uint8_t relay_key_map,uint8_t lv_act)
-{
+bool ToggleAll(uint8_t relay_key_map)
+{ // 函数功能：以第一路可控制继电器开关状态为准，开关一组可控继电器（保持可控一组继电器状态一致）
   uint8_t lv_key;
   bool lv_onoff;
+  bool onoff_beset = FALSE;
   for( uint8_t idx = 0; idx < 8; idx++ ) {
     // Check key map
     if( BF_GET(relay_key_map, idx, 1) ) {
       lv_key = idx + '1';
-      lv_onoff = (lv_act == BTN_ACT_TOGGLE ? !relay_get_key(lv_key) : BTN_ACT_ON == lv_act);
+      if(!onoff_beset)
+      {
+         onoff_beset = TRUE;
+         lv_onoff = !relay_get_key(lv_key);         
+      }  
       if( relay_set_key(lv_key, lv_onoff) ) {
         Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
         SendMyMessage();
+      }
+    }
+  }
+  return !lv_onoff;
+}
+
+bool ToggleLoop(uint8_t relay_key_map,uint8_t index)
+{
+   // index range(0-8)  0-all n-on bit n
+    // 在关的状态下，才可切换；开的状态下，开始计时（超时不切换，不超时，且状态是关闭，切换）
+    bool bMoveKey = FALSE;
+    if( index == 0 ) 
+    {
+        bMoveKey = ToggleAll(relay_key_map);
+        if( !bMoveKey ) 
+        { //开，开始计时
+          relay_loop_tick = 0;
+        }
+    } 
+    else
+    {
+        uint8_t lv_key = index + '0';
+        bool lv_onoff = !relay_get_key(lv_key);
+        if( relay_set_key(lv_key, lv_onoff) ) {
+          Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+          SendMyMessage();
+        }
+        if(lv_onoff)
+        {// Off -> On, stay at current relay key
+          //开，开始计时
+          relay_loop_tick = 0;
+        }
+        else
+        {// On -> Off
+          bMoveKey = TRUE;
+        }      
+    }
+    // Move to next avalaible relay key
+    if( bMoveKey &&  relay_loop_tick <= BUTTON_TIMEOUT) {
+        last_relay_key_index = GetNextIndex(relay_key_map,index);
+    }
+
+    return bMoveKey;
+}
+
+uint8_t LoopAll(uint8_t relay_key_map,uint8_t lv_act)
+{
+  if(lv_act == BTN_ACT_TOGGLE)
+  {
+    ToggleLoop(relay_key_map,0);  
+  }
+  else
+  {
+    relay_loop_tick = 0;
+    uint8_t lv_key;
+    bool lv_onoff;
+    for( uint8_t idx = 0; idx < 8; idx++ ) {
+      // Check key map
+      if( BF_GET(relay_key_map, idx, 1) ) {
+        lv_key = idx + '1';
+        lv_onoff = (BTN_ACT_ON == lv_act);
+        if( relay_set_key(lv_key, lv_onoff) ) {
+          Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+          SendMyMessage();
+        }
       }
     }
   }
@@ -222,21 +291,15 @@ uint8_t LoopAll(uint8_t relay_key_map,uint8_t lv_act)
 uint8_t LoopOne(uint8_t relay_key_map,uint8_t lv_act,uint8_t index)
 {
   // index range(0-8)  0-all n-on bit n
-  uint8_t lv_key;
-  bool lv_onoff;
-  lv_key = index + '0';
   if(lv_act == BTN_ACT_TOGGLE)
   { // toggle
-    lv_key = index + '0';    
-    lv_onoff = !relay_get_key(lv_key);    
-    if( relay_set_key(lv_key, lv_onoff) ) {
-      Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);         
-      SendMyMessage();
-    }
+    ToggleLoop(relay_key_map,index);
   }
   else
   { 
-    lv_onoff = (BTN_ACT_ON == lv_act);
+    uint8_t lv_key;
+    bool lv_onoff = (BTN_ACT_ON == lv_act);
+    relay_loop_tick = 0;
     for( uint8_t idx = 0; idx < 8; idx++ ) {
       // Check key map
       if( BF_GET(relay_key_map, idx, 1) ) {
@@ -267,11 +330,6 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
     uint8_t lv_key;
     uint8_t lv_op = BF_GET(gConfig.btnAction[_btn][_op].action, 5, 3);
     if( lv_op == _op ) {
-      //////////// zhangqiaoli add for loop relay ////////////////////////     
-      uint8_t lastop = BF_GET(last_btn_action.action, 5, 3);
-      uint8_t lastobj = BF_GET(last_btn_action.action, 2, 3);
-      uint8_t lastact = BF_GET(last_btn_action.action, 0, 2);
-      //////////// zhangqiaoli add for loop relay ////////////////////////
       uint8_t lv_obj = BF_GET(gConfig.btnAction[_btn][_op].action, 2, 3);
       uint8_t lv_act = BF_GET(gConfig.btnAction[_btn][_op].action, 0, 2);
       bool lv_onoff;
@@ -294,34 +352,32 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
       case BTN_OBJ_LOOP_KEY_MAP:
         // ToDo:... leave this to Qiaoli
         /// get one key from key map, act on it, and move to the next key
-        if(lastobj == BTN_OBJ_LOOP_KEY_MAP && lastop == _op && lastact == lv_act && last_btn == _btn)
+        if(last_op == _op && last_btn == _btn)
         {  // 不能完全依靠lastop == _op 和 last_btn == _btn 来判断，因为程序运行过程中有可能改变配置，导致同样的按钮同样的按钮操作控制动作不相同
+          // loop from last index
           uint8_t key_map_index = last_relay_key_index;
-          if(relay_loop_tick <= BUTTON_TIMEOUT )
-          { // loop from next index
-            key_map_index = GetNextIndex(gConfig.btnAction[_btn][_op].keyMap,last_relay_key_index);
-          }
-          else
-          { // loop from last index        
-          }
-          
+          if(lv_act != BTN_ACT_TOGGLE)
+          { // turnon & turnoff 和 toggle切换时机不一样，分开处理
+            if(relay_loop_tick <= BUTTON_TIMEOUT )
+            { // loop from next index(切换)
+              key_map_index = GetNextIndex(gConfig.btnAction[_btn][_op].keyMap,last_relay_key_index);
+              last_relay_key_index = key_map_index;
+            }
+          }         
           if(key_map_index == 0)
           { // all
             LoopAll(gConfig.btnAction[_btn][_op].keyMap,lv_act);
-            last_relay_key_index = 0;
           }
           else
           { // set relay on bit key_map_index
             LoopOne(gConfig.btnAction[_btn][_op].keyMap,lv_act,key_map_index);
-          }
-          last_relay_key_index = key_map_index;
+          }       
         }
         else
         { // loop from start(all)
           LoopAll(gConfig.btnAction[_btn][_op].keyMap,lv_act);
           last_relay_key_index = 0;
         }
-        relay_loop_tick = 0;
         break;
 
       default:
@@ -335,8 +391,7 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
       }
       //////////// zhangqiaoli add for loop relay ////////////////////////     
       last_btn = _btn;
-      last_btn_action = gConfig.btnAction[_btn][_op];
-      //last_relay_key_index =  
+      last_op = _op;
       //////////// zhangqiaoli add for loop relay ////////////////////////
     }
   }
