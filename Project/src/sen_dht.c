@@ -102,6 +102,8 @@ bool DHT_checkData()
       if( dht_tem_ready )
       {
         dht_tem_value = dht_tem_mvSum / DHT_TEM_MA_NUM;
+        // Adjust according to sensor (+4 degree)
+        dht_tem_value+= 400;
       }
       if( dht_hum_ready ) 
       {
