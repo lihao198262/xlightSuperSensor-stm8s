@@ -485,40 +485,6 @@ bool SayHelloToDevice(bool infinate) {
   return TRUE;
 }
 
-////////////////////////////zql relay test //////////////////////////
-void configbuttontest() {
-  // btn 0(center)
-  gConfig.btnAction[0][0].action = 0x00; // short press - direct - toggle
-  gConfig.btnAction[0][0].keyMap = 0xAA; // relay 1010 1010
-  // btn 0(center)
-  gConfig.btnAction[0][1].action = 0x21; // double press - direct - turn on
-  gConfig.btnAction[0][1].keyMap = 0xAA; // relay 1010 1010
-  // btn 0(center)
-  gConfig.btnAction[0][2].action = 0x42; // long press - direct - turn off
-  gConfig.btnAction[0][2].keyMap = 0xAA; // relay 1010 1010
-  
-   // btn 1(up)
-  gConfig.btnAction[1][0].action = 0x04; // short press - scan - toggle
-  gConfig.btnAction[1][0].keyMap = 0xAA; // relay 1010 1010
-  // btn 1(up)
-  gConfig.btnAction[1][1].action = 0x25; // double press - scan - turn on
-  gConfig.btnAction[1][1].keyMap = 0xAA; // relay 1010 1010
-  // btn 1(up)
-  gConfig.btnAction[1][2].action = 0x46; // long press - scan - turn off
-  gConfig.btnAction[1][2].keyMap = 0xAA; // relay 1010 1010
-  
-  // btn 2(down)
-  gConfig.btnAction[2][0].action = 0x08; // short press - loop - toggle
-  gConfig.btnAction[2][0].keyMap = 0xAA; // relay 1010 1010
-  // btn 2(down)
-  gConfig.btnAction[2][1].action = 0x29; // double press - loop - turn on
-  gConfig.btnAction[2][1].keyMap = 0xAA; // relay 1010 1010
-  // btn 2(down)
-  gConfig.btnAction[2][2].action = 0x4A; // long press - loop - turn off
-  gConfig.btnAction[2][2].keyMap = 0xAA; // relay 1010 1010
-}
-////////////////////////////zql relay test //////////////////////////
-
 int main( void ) {
 
 #ifdef EN_SENSOR_ALS
@@ -605,9 +571,6 @@ int main( void ) {
 
 #ifdef EN_PANEL_BUTTONS
   button_init();
-  //////////////// zql relay test//////////////////
-  configbuttontest();
-  //////////////// zql relay test//////////////////
 #endif  
   
   while(1) {
