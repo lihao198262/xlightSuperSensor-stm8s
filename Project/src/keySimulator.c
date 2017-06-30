@@ -153,6 +153,7 @@ bool FinishKeyPress(u8 _target, u8 _op, u8 _key, u8 _step) {
     case KEY_OP_STYLE_PRESS:
     case KEY_OP_STYLE_FAST_PRESS:
     case KEY_OP_STYLE_LONG_PRESS:
+    case KEY_OP_STYLE_VLONG_PRESS:
       relay_gpio_write_bit(_port, _pin, FALSE);
       break;
     case KEY_OP_STYLE_DBL_CLICK:
