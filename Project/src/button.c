@@ -39,7 +39,7 @@ LEDs
 #define pinKeyCenter            ((BitStatus)(BUTTONS_PORT1->IDR & (uint8_t)BUTTON_PIN_CENTER))
 
 #define BUTTON_DEBONCE_DURATION                 3       // The unit is 10 ms, so the duration is 30 ms.
-#define BUTTON_WAIT_2S                          100     // The unit is 10 ms, so the duration is 2 s.
+#define BUTTON_WAIT_2S                          50      // The unit is 10 ms, so the duration is 500 ms.
 #define BUTTON_WAIT_3S                          300     // The unit is 10 ms, so the duration is 3 s.
 #define BUTTON_DOUBLE_BTN_DURATION              50      // The unit is 10 ms, so the duration is 500 ms.
 #define BUTTON_DOUBLE_BTN_TRACK_DURATION        300     // The unit is 10 ms, so the duration is 3 s.
