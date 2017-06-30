@@ -15,15 +15,15 @@ typedef struct {
 #define KEYMAP_TABLE_ROWS          3
 const keyPinMap_t keyMapTable[] = {
   // target     key     port    pin
-  {0,           1,      GPIOD,  GPIO_PIN_4},    // Up
-  {0,           2,      GPIOD,  GPIO_PIN_3},    // Down
-  {0,           3, 	GPIOD, 	GPIO_PIN_2}     // Stop
+  {0,           '1',    GPIOD,  GPIO_PIN_4},    // Up
+  {0,           '2',    GPIOD,  GPIO_PIN_3},    // Down
+  {0,           '3', 	GPIOD, 	GPIO_PIN_2}     // Stop
 };
 
 bool LookupKeyPinMap(uint8_t target, uint8_t key, GPIO_TypeDef **port, GPIO_Pin_TypeDef *pin)
 {
   for( u8 i = 0; i < KEYMAP_TABLE_ROWS; i++ ) {
-    if( target == keyMapTable[i].target || key == keyMapTable[i].key ) {
+    if( target == keyMapTable[i].target && key == keyMapTable[i].key ) {
       *port = keyMapTable[i].port;
       *pin = keyMapTable[i].pin;
       return TRUE;
