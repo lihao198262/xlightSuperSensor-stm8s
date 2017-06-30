@@ -100,6 +100,7 @@ typedef struct
   UC rptTimes                 :2;           // Sending message max repeat times [0..3]
   UC reserved1                :1;
   US senMap                   :16;          // Sensor Map
+  UC relay_key_value          :8;           // Relay Key Bitmap
 #ifdef EN_PANEL_BUTTONS  
   Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
 #endif  
