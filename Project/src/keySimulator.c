@@ -125,7 +125,7 @@ u8 SimulateKeyPress(u8 _target, u8 _op, u8 _key) {
       break;
     case KEY_OP_STYLE_VLONG_PRESS:
       relay_gpio_write_bit(_port, _pin, TRUE);
-      _delay = 255;
+      _delay = 250;
       break;
     case KEY_OP_STYLE_HOLD:
       relay_gpio_write_bit(_port, _pin, TRUE);
