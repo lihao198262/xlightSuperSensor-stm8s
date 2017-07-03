@@ -190,7 +190,7 @@
         <option>
           <name>CCDefines</name>
           <state>STM8S105</state>
-          <state>ZENREMOTE</state>
+          <state>ZENSENSOR</state>
         </option>
         <option>
           <name>CCPreprocFile</name>

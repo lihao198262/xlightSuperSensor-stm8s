@@ -94,17 +94,17 @@ Connections:
 #define SYS_RUNNING                     5
 
 // Keep alive message interval, around 6 seconds
-#define RTE_TM_KEEP_ALIVE               500    // about 5s (500 * 10ms)
+#define RTE_TM_KEEP_ALIVE               1500   // about 15s (1500 * 10ms)
 #define MAX_RF_FAILED_TIME              10     // Reset RF module when reach max failed times of sending
 
 // Sensor reading duration
 #define SEN_MAX_SEND_INTERVAL           6000   // about 60s (6000 * 10ms)
-#define SEN_READ_ALS                    200    // about 2s (200 * 10ms)
+#define SEN_READ_ALS                    600    // about 6s (600 * 10ms)
 #define SEN_READ_MIC                    200    // about 2s (200 * 10ms)
 #define SEN_READ_PIR                    10     // about 100ms (10 * 10ms)
 #define SEN_READ_IRKEY                  50     // about 500ms (50 * 10ms)
-#define SEN_READ_PM25                   400    // about 4s (400 * 10ms)
-#define SEN_READ_DHT                    300    // about 3s (300 * 10ms)
+#define SEN_READ_PM25                   800    // about 8s (800 * 10ms)
+#define SEN_READ_DHT                    1000   // about 10s (1000 * 10ms)
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 // For Gu'an Demo Classroom
@@ -293,7 +293,11 @@ void LoadConfig()
     gConfig.state = 1;
     
     // Notes: only for Airpuritifier
-    gConfig.subID = 2;
+    //gConfig.subID = 2;
+    // Notes: only for potlight
+    //gConfig.subID = 4;
+    // Notes: only for AC
+    //gConfig.subID = 1;
     
     // Engineering code
     gConfig.senMap |= sensorALS;

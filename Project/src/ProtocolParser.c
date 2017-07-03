@@ -278,7 +278,7 @@ void Msg_Relay_KeyMap(uint8_t _to) {
   build(_to, gConfig.subID, C_REQ, V_RELAY_MAP, 0, 1);
   moSetLength(1);
   moSetPayloadType(P_BYTE);
-  sndMsg.payload.bValue = relay_key_value;
+  sndMsg.payload.bValue = gConfig.relay_key_value;
   bMsgReady = 1;
 }
 
