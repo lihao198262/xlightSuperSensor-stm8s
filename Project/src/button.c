@@ -202,7 +202,7 @@ uint8_t GetNextIndex(uint8_t relay_key_map,uint8_t index)
 }
 
 bool ToggleAll(uint8_t relay_key_map)
-{ // 函数功能：以第一路可控制继电器开关状态为准，开关一组可控继电器（保持可控一组继电器状态一致）
+{ // Control a group relay switch based on the first switch status
   uint8_t lv_key;
   bool lv_onoff;
   bool onoff_beset = FALSE;
