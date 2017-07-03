@@ -8,7 +8,6 @@
 #include "relay_key.h"
 #include "keySimulator.h"
 #include "infrared.h"
-#include "button.h"
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
 #include "ADC1Dev.h"
@@ -38,6 +37,9 @@
 #include "sen_dht.h"
 #endif
 
+#ifdef EN_PANEL_BUTTONS
+#include "button.h"
+#endif
 /*
 License: MIT
 

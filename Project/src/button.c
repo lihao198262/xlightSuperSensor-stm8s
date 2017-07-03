@@ -263,7 +263,7 @@ bool ToggleLoop(uint8_t relay_key_map,uint8_t index)
     return bMoveKey;
 }
 
-uint8_t LoopAll(uint8_t relay_key_map,uint8_t lv_act)
+void LoopAll(uint8_t relay_key_map,uint8_t lv_act)
 {
   if(lv_act == BTN_ACT_TOGGLE)
   {
@@ -288,7 +288,7 @@ uint8_t LoopAll(uint8_t relay_key_map,uint8_t lv_act)
   }
 }
 
-uint8_t LoopOne(uint8_t relay_key_map,uint8_t lv_act,uint8_t index)
+void LoopOne(uint8_t relay_key_map,uint8_t lv_act,uint8_t index)
 {
   // index range(0-8)  0-all n-on bit n
   if(lv_act == BTN_ACT_TOGGLE)
