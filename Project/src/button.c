@@ -60,7 +60,7 @@ static uint8_t button_first_detect_status = 0xFF;
 static uint8_t m_timer_id_debonce_detet;
 
 //////////// zhangqiaoli add for loop relay ////////////////////////
-#define BUTTON_TIMEOUT            1000          // The unit is 10 ms, so the duration is 5s.
+#define BUTTON_TIMEOUT            500          // The unit is 10 ms, so the duration is 5s.
 uint8_t last_relay_key_index = 0;
 uint16_t relay_loop_tick = 0;
 uint8_t last_btn = 0;
@@ -227,13 +227,13 @@ bool ToggleAll(uint8_t relay_key_map)
 bool ToggleLoop(uint8_t relay_key_map,uint8_t index)
 {
    // index range(0-8)  0-all n-on bit n
-    // 在关的状态下，才可切换；开的状态下，开始计时（超时不切换，不超时，且状态是关闭，切换）
+    // only can switch when device state is off；(timeout and device state is off ,switch to next)
     bool bMoveKey = FALSE;
     if( index == 0 ) 
     {
         bMoveKey = ToggleAll(relay_key_map);
         if( !bMoveKey ) 
-        { //开，开始计时
+        { //state on,start timer
           relay_loop_tick = 0;
         }
     } 
@@ -247,7 +247,7 @@ bool ToggleLoop(uint8_t relay_key_map,uint8_t index)
         }
         if(lv_onoff)
         {// Off -> On, stay at current relay key
-          //开，开始计时
+          //state on,start timer
           relay_loop_tick = 0;
         }
         else
@@ -354,13 +354,13 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
         // ToDo:... leave this to Qiaoli
         /// get one key from key map, act on it, and move to the next key
         if(last_op == _op && last_btn == _btn)
-        {  // 不能完全依靠lastop == _op 和 last_btn == _btn 来判断，因为程序运行过程中有可能改变配置，导致同样的按钮同样的按钮操作控制动作不相同
+        {
           // loop from last index
           uint8_t key_map_index = last_relay_key_index;
           if(lv_act != BTN_ACT_TOGGLE)
-          { // turnon & turnoff 和 toggle切换时机不一样，分开处理
+          { // turnon & turnoff and toggle switching time is different，handle separately
             if(relay_loop_tick <= BUTTON_TIMEOUT )
-            { // loop from next index(切换)
+            { // loop from next index(switch)
               key_map_index = GetNextIndex(gConfig.btnAction[_btn][_op].keyMap,last_relay_key_index);
               last_relay_key_index = key_map_index;
             }

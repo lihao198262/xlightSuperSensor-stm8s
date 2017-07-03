@@ -28,13 +28,25 @@ u8 wait_high(uint16_t timeout)
   if(!dht11_timeout) return 1;
   return 0;
 }
-
 #define DHT_TEM_MA_NUM         10
 #define DHT_HUM_MA_NUM         40
+
+#ifdef DHT11
 #define DHT_TEM_MAX            50
-#define DHT_TEM_MIN            -40
+#define DHT_TEM_MIN            0
 #define DHT_HUM_MAX            90
 #define DHT_HUM_MIN            20
+#elif defined DHT22
+#define DHT_TEM_MAX            80
+#define DHT_TEM_MIN            -40
+#define DHT_HUM_MAX            80
+#define DHT_HUM_MIN            -20
+#else
+#define DHT_TEM_MAX            60
+#define DHT_TEM_MIN            -40
+#define DHT_HUM_MAX            100
+#define DHT_HUM_MIN            -20
+#endif
 
 bool dht_tem_ready = FALSE;
 bool dht_hum_ready = FALSE;
@@ -147,18 +159,18 @@ u8 DHT_ReadData(u8 *data)
     DHT_IN;       //DHT11_input
     
     U8FLAG=0;
-    if( wait_low(200) > 0) return RESULT_ERRREAD; //wait DHT11 fist 80us low singal  response
-    if( wait_high(200) > 0) return RESULT_ERRREAD; //wait DHT11 fist 80us high singal   prepare
+    if( wait_low(200) > 0) goto failed; //wait DHT11 fist 80us low singal  response
+    if( wait_high(200) > 0) goto failed; //wait DHT11 fist 80us high singal   prepare
     for(j = 0; j<5; j++) { //read 5 bytes data
         for(i=0; i<8; i++) {
-            wait_low(100);//wait the fist 50us low singal
+            if( wait_low(100) > 0) goto failed;//wait the fist 50us low singal
             U8temp=0;
             Delay10Us(3);
             if(DHT_Read)
                 U8temp=1;//wait the high singal if over 30us the this bit set to 1          
             data[j]<<=1;
             data[j]|=U8temp;
-            wait_high(100);
+            if( wait_high(100)> 0) goto failed;
         }
     }
     
@@ -166,9 +178,11 @@ u8 DHT_ReadData(u8 *data)
     
     if( (data[4] != ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) ) {
       return RESULT_ERRCHKSUM;
-    }
-    
+    }   
     return RESULT_OK;
+failed:
+    enableInterrupts();
+    return RESULT_ERRREAD;
 }
 
 RESULT DHT_GetData(s16 * t, s16 * h)
