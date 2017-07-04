@@ -355,7 +355,7 @@ type 0  ---- all
 type 1  ---- tem
 type 2  ---- hum
 */
-void Msg_SenDHT(uint16_t dht_t,uint16_t dht_h,u8 type) {
+void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type) {
   if(type == 0)
   {
       build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);

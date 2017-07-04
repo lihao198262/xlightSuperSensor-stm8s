@@ -37,6 +37,9 @@
 #include "sen_dht.h"
 #endif
 
+#ifdef EN_PANEL_BUTTONS
+#include "button.h"
+#endif
 /*
 License: MIT
 
@@ -107,7 +110,7 @@ Connections:
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 // For Gu'an Demo Classroom
-#define ONOFF_RESET_TIMES               10     // on / off times to reset device, regular value is 3
+#define ONOFF_RESET_TIMES               300     // on / off times to reset device, regular value is 3
 
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
@@ -592,10 +595,8 @@ int main( void ) {
     
     // IRQ
     NRF2401_EnableIRQ();
-    
     // Must establish connection firstly
     SayHelloToDevice(TRUE);
-    
     while (mStatus == SYS_RUNNING) {
       
       // Feed the Watchdog
@@ -785,6 +786,9 @@ void tmrProcess() {
       ScanKeyBuffer(i);
     }
   }
+  //////zql add for relay key//////////////
+  if(relay_loop_tick < 5000) relay_loop_tick++;
+  //////zql add for relay key//////////////
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {

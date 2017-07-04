@@ -4,6 +4,7 @@
 
 //#define DHT21
 #define DHT11
+//#define DHT22
 
 static uint16_t collect_times = 0;
 static uint16_t collect_times_success = 0;
@@ -27,29 +28,43 @@ u8 wait_high(uint16_t timeout)
   if(!dht11_timeout) return 1;
   return 0;
 }
-
 #define DHT_TEM_MA_NUM         10
 #define DHT_HUM_MA_NUM         40
+
+#ifdef DHT11
 #define DHT_TEM_MAX            50
+#define DHT_TEM_MIN            0
 #define DHT_HUM_MAX            90
+#define DHT_HUM_MIN            20
+#elif defined DHT22
+#define DHT_TEM_MAX            80
+#define DHT_TEM_MIN            -40
+#define DHT_HUM_MAX            80
+#define DHT_HUM_MIN            -20
+#else
+#define DHT_TEM_MAX            60
+#define DHT_TEM_MIN            -40
+#define DHT_HUM_MAX            100
+#define DHT_HUM_MIN            -20
+#endif
 
 bool dht_tem_ready = FALSE;
 bool dht_hum_ready = FALSE;
 bool dht_alive = FALSE;
 // value = integer part * 100 + decimal part 
-u16 dht_tem_value;
-u16 dht_hum_value;
+s16 dht_tem_value;
+s16 dht_hum_value;
 
 // Moving average
 u8 dht_tem_mvPtr = 0;
 u8 dht_hum_mvPtr = 0;
 
-u16 dht_mvTemData[DHT_TEM_MA_NUM] = {0};
-u16 dht_mvHumData[DHT_HUM_MA_NUM] = {0};
-u32 dht_tem_mvSum = 0;
-u32 dht_hum_mvSum = 0;
+s16 dht_mvTemData[DHT_TEM_MA_NUM] = {0};
+s16 dht_mvHumData[DHT_HUM_MA_NUM] = {0};
+s32 dht_tem_mvSum = 0;
+s32 dht_hum_mvSum = 0;
 
-RESULT DHT_GetData(u16 * t, u16 * h);
+RESULT DHT_GetData(s16 * t, s16 * h);
 u8 DHT_ReadData(u8 *data);
 
 void DHT_init()
@@ -62,8 +77,8 @@ void DHT_init()
   dht_hum_value = 0;
   dht_tem_ready = FALSE;
   dht_hum_ready = FALSE;  
-  memset(dht_mvTemData, 0x00, sizeof(u16) * DHT_TEM_MA_NUM);
-  memset(dht_mvHumData, 0x00, sizeof(u16) * DHT_HUM_MA_NUM);
+  memset(dht_mvTemData, 0x00, sizeof(s16) * DHT_TEM_MA_NUM);
+  memset(dht_mvHumData, 0x00, sizeof(s16) * DHT_HUM_MA_NUM);
   
   // Init Timer
   TIM2_Init();
@@ -71,12 +86,26 @@ void DHT_init()
 
 bool DHT_checkData()
 {
-  u16 newTemData = 0;
-  u16 newHumData = 0;
+  s16 newTemData = 0;
+  s16 newHumData = 0;
   if (DHT_GetData(&newTemData,&newHumData) == RESULT_OK)
   {
-      if( newTemData > DHT_TEM_MAX * 100 ) newTemData = DHT_TEM_MAX * 100;
-      if( newHumData > DHT_HUM_MAX * 100 ) newHumData = DHT_HUM_MAX * 100;
+      if( newTemData > DHT_TEM_MAX * 100 ) 
+      {
+        newTemData = DHT_TEM_MAX * 100;
+      }
+      else if( newTemData < DHT_TEM_MIN * 100 ) 
+      {
+        newTemData = DHT_TEM_MIN * 100;
+      }
+      if( newHumData > DHT_HUM_MAX * 100 ) 
+      {
+        newHumData = DHT_HUM_MAX * 100;
+      }
+      else if( newHumData < DHT_HUM_MIN * 100 ) 
+      {
+        newHumData = DHT_HUM_MIN * 100;
+      }
       
       dht_alive = TRUE;
       if( newTemData != dht_mvTemData[dht_tem_mvPtr] ) {
@@ -130,18 +159,18 @@ u8 DHT_ReadData(u8 *data)
     DHT_IN;       //DHT11_input
     
     U8FLAG=0;
-    if( wait_low(200) > 0) return RESULT_ERRREAD; //wait DHT11 fist 80us low singal  response
-    if( wait_high(200) > 0) return RESULT_ERRREAD; //wait DHT11 fist 80us high singal   prepare
+    if( wait_low(200) > 0) goto failed; //wait DHT11 fist 80us low singal  response
+    if( wait_high(200) > 0) goto failed; //wait DHT11 fist 80us high singal   prepare
     for(j = 0; j<5; j++) { //read 5 bytes data
         for(i=0; i<8; i++) {
-            wait_low(100);//wait the fist 50us low singal
+            if( wait_low(100) > 0) goto failed;//wait the fist 50us low singal
             U8temp=0;
             Delay10Us(3);
             if(DHT_Read)
                 U8temp=1;//wait the high singal if over 30us the this bit set to 1          
             data[j]<<=1;
             data[j]|=U8temp;
-            wait_high(100);
+            if( wait_high(100)> 0) goto failed;
         }
     }
     
@@ -149,12 +178,14 @@ u8 DHT_ReadData(u8 *data)
     
     if( (data[4] != ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) ) {
       return RESULT_ERRCHKSUM;
-    }
-    
+    }   
     return RESULT_OK;
+failed:
+    enableInterrupts();
+    return RESULT_ERRREAD;
 }
 
-RESULT DHT_GetData(u16 * t, u16 * h)
+RESULT DHT_GetData(s16 * t, s16 * h)
 {
    collect_times++;
   /*if(collect_times == 600)
@@ -181,6 +212,29 @@ RESULT DHT_GetData(u16 * t, u16 * h)
     if (dectmp < 10 ) dectmp *= 10;
     else if(dectmp >=100) dectmp /= 10;
     *t = tmp[2]*100 + dectmp;
+#endif
+
+#ifdef DHT22
+    int16_t hum10 = 0;
+    int16_t tem10 = 0;
+    if ((tmp[0] & 0x80) == 0x80) {
+            hum10 |= (tmp[0] & 0x7F) << 8;
+            hum10 |= tmp[1];
+            hum10 *= -1;
+    } else {
+            hum10 |= tmp[0] << 8;
+            hum10 |= tmp[1];
+    }
+    if ((tmp[2] & 0x80) == 0x80) {
+            tem10 |= (tmp[2] & 0x7F) << 8;
+            tem10 |= tmp[3];
+            tem10 *= -1;
+    } else {
+            tem10 |= tmp[2] << 8;
+            tem10 |= tmp[3];
+    }
+    *h = hum10 * 10;
+    *t = tem10 * 10;
 #endif
     
     collect_times_success++;

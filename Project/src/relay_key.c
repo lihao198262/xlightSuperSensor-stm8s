@@ -165,3 +165,61 @@ bool relay_set_key(u8 _key, bool _on)
   
   return rc;
 }
+
+bool IsValidRelaykey(u8 index)
+{
+  u8 key = index + '1';
+  bool rc = FALSE;
+  
+  switch( key ) {
+  case '1':
+#ifdef SOFT_KEY_1_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '2':
+#ifdef SOFT_KEY_2_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '3':
+#ifdef SOFT_KEY_3_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '4':
+#ifdef SOFT_KEY_4_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '5':
+#ifdef SOFT_KEY_5_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '6':
+#ifdef SOFT_KEY_6_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '7':
+#ifdef SOFT_KEY_7_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '8':
+#ifdef SOFT_KEY_8_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+  }
+  
+  return rc;
+}

@@ -18,7 +18,8 @@ LEDs
 #include "relay_key.h"
 #include "xliNodeConfig.h"
 #include "MyMessage.h"
-
+#include "ProtocolParser.h"
+#include "relay_key.h"
 //---------------------------------------------------
 // PIN Map
 //---------------------------------------------------
@@ -57,6 +58,14 @@ static uint8_t button_status = 0xFF;
 static uint8_t button_first_detect_status = 0xFF;
 
 static uint8_t m_timer_id_debonce_detet;
+
+//////////// zhangqiaoli add for loop relay ////////////////////////
+#define BUTTON_TIMEOUT            500          // The unit is 10 ms, so the duration is 5s.
+uint8_t last_relay_key_index = 0;
+uint16_t relay_loop_tick = 0;
+uint8_t last_btn = 0;
+uint8_t last_op = 0;
+//////////// zhangqiaoli add for loop relay ////////////////////////
 
 void app_button_event_handler(uint8_t _btn, button_event_t button_event);
 void button_push(uint8_t _btn);
@@ -164,6 +173,155 @@ void button_init()
     timer_create(&m_timer_id_double_btn_detet[_btn], _btn, double_btn_timeout_handler);
   }
   timer_create(&m_timer_id_debonce_detet, 0, btn_debonce_timeout_handler);
+  
+  //////////// zhangqiaoli add for loop relay ////////////////////////
+  last_relay_key_index = 0;
+  relay_loop_tick = 0;
+  last_btn = 0;
+  last_op = 0;
+//////////// zhangqiaoli add for loop relay ////////////////////////
+  
+}
+
+uint8_t GetNextIndex(uint8_t relay_key_map,uint8_t index)
+{ // key_map_index
+  // 0 - all
+  // n - bit n relay
+  uint8_t nextindex = 0;
+  for( uint8_t idx = index; idx < 8; idx++ ) {
+    // Check key map
+    if( BF_GET(relay_key_map, idx, 1) ) {      
+      if(IsValidRelaykey(idx))
+      {
+        nextindex = idx+1;
+        break;
+      }
+    }
+  }
+  return nextindex;
+}
+
+bool ToggleAll(uint8_t relay_key_map)
+{ // Control a group relay switch based on the first switch status
+  uint8_t lv_key;
+  bool lv_onoff;
+  bool onoff_beset = FALSE;
+  for( uint8_t idx = 0; idx < 8; idx++ ) {
+    // Check key map
+    if( BF_GET(relay_key_map, idx, 1) ) {
+      lv_key = idx + '1';
+      if(!onoff_beset)
+      {
+         onoff_beset = TRUE;
+         lv_onoff = !relay_get_key(lv_key);         
+      }  
+      if( relay_set_key(lv_key, lv_onoff) ) {
+        Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+        SendMyMessage();
+      }
+    }
+  }
+  return !lv_onoff;
+}
+
+bool ToggleLoop(uint8_t relay_key_map,uint8_t index)
+{
+   // index range(0-8)  0-all n-on bit n
+    // only can switch when device state is off£»(timeout and device state is off ,switch to next)
+    bool bMoveKey = FALSE;
+    if( index == 0 ) 
+    {
+        bMoveKey = ToggleAll(relay_key_map);
+        if( !bMoveKey ) 
+        { //state on,start timer
+          relay_loop_tick = 0;
+        }
+    } 
+    else
+    {
+        uint8_t lv_key = index + '0';
+        bool lv_onoff = !relay_get_key(lv_key);
+        if( relay_set_key(lv_key, lv_onoff) ) {
+          Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+          SendMyMessage();
+        }
+        if(lv_onoff)
+        {// Off -> On, stay at current relay key
+          //state on,start timer
+          relay_loop_tick = 0;
+        }
+        else
+        {// On -> Off
+          bMoveKey = TRUE;
+        }      
+    }
+    // Move to next avalaible relay key
+    if( bMoveKey &&  relay_loop_tick <= BUTTON_TIMEOUT) {
+        last_relay_key_index = GetNextIndex(relay_key_map,index);
+    }
+
+    return bMoveKey;
+}
+
+void LoopAll(uint8_t relay_key_map,uint8_t lv_act)
+{
+  if(lv_act == BTN_ACT_TOGGLE)
+  {
+    ToggleLoop(relay_key_map,0);  
+  }
+  else
+  {
+    relay_loop_tick = 0;
+    uint8_t lv_key;
+    bool lv_onoff;
+    for( uint8_t idx = 0; idx < 8; idx++ ) {
+      // Check key map
+      if( BF_GET(relay_key_map, idx, 1) ) {
+        lv_key = idx + '1';
+        lv_onoff = (BTN_ACT_ON == lv_act);
+        if( relay_set_key(lv_key, lv_onoff) ) {
+          Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+          SendMyMessage();
+        }
+      }
+    }
+  }
+}
+
+void LoopOne(uint8_t relay_key_map,uint8_t lv_act,uint8_t index)
+{
+  // index range(0-8)  0-all n-on bit n
+  if(lv_act == BTN_ACT_TOGGLE)
+  { // toggle
+    ToggleLoop(relay_key_map,index);
+  }
+  else
+  { 
+    uint8_t lv_key;
+    bool lv_onoff = (BTN_ACT_ON == lv_act);
+    relay_loop_tick = 0;
+    for( uint8_t idx = 0; idx < 8; idx++ ) {
+      // Check key map
+      if( BF_GET(relay_key_map, idx, 1) ) {
+        if( idx+1 == index)
+        { 
+          lv_key = index + '0';        
+          if( relay_set_key(lv_key, lv_onoff) ) {
+            Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);         
+            SendMyMessage();
+          }
+        }
+        else
+        {
+          lv_key = idx + '1';
+          if( relay_set_key(lv_key, !lv_onoff) ) {
+            Msg_Relay_Ack(NODEID_GATEWAY, !lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+            SendMyMessage();
+          }
+        }
+      }
+    }
+  }
 }
 
 // Button Actions
@@ -195,6 +353,32 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
       case BTN_OBJ_LOOP_KEY_MAP:
         // ToDo:... leave this to Qiaoli
         /// get one key from key map, act on it, and move to the next key
+        if(last_op == _op && last_btn == _btn)
+        {
+          // loop from last index
+          uint8_t key_map_index = last_relay_key_index;
+          if(lv_act != BTN_ACT_TOGGLE)
+          { // turnon & turnoff and toggle switching time is different£¬handle separately
+            if(relay_loop_tick <= BUTTON_TIMEOUT )
+            { // loop from next index(switch)
+              key_map_index = GetNextIndex(gConfig.btnAction[_btn][_op].keyMap,last_relay_key_index);
+              last_relay_key_index = key_map_index;
+            }
+          }         
+          if(key_map_index == 0)
+          { // all
+            LoopAll(gConfig.btnAction[_btn][_op].keyMap,lv_act);
+          }
+          else
+          { // set relay on bit key_map_index
+            LoopOne(gConfig.btnAction[_btn][_op].keyMap,lv_act,key_map_index);
+          }       
+        }
+        else
+        { // loop from start(all)
+          LoopAll(gConfig.btnAction[_btn][_op].keyMap,lv_act);
+          last_relay_key_index = 0;
+        }
         break;
 
       default:
@@ -206,6 +390,10 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
         }
         break;
       }
+      //////////// zhangqiaoli add for loop relay ////////////////////////     
+      last_btn = _btn;
+      last_op = _op;
+      //////////// zhangqiaoli add for loop relay ////////////////////////
     }
   }
 #endif  
