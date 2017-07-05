@@ -27,12 +27,16 @@ void Msg_SenMIC(uint16_t _value);
 void Msg_SenPIR(bool _sw);
 #endif
 
+#ifdef EN_SENSOR_IRKEY
+void Msg_SenIRKey(uint8_t _sw);
+#endif
+
 #ifdef EN_SENSOR_PM25
 void Msg_SenPM25(uint16_t _value);
 #endif
 
 #ifdef EN_SENSOR_DHT
-void Msg_SenDHT(uint16_t dht_t,uint16_t dht_h,u8 type);
+void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type);
 #endif
 
 #endif /* __PROTOCOL_PARSER_H */

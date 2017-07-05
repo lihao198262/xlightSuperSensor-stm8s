@@ -1,4 +1,5 @@
 #include <stm8s.h>
+#include "_global.h"
 #include "relay_key.h"
 #include "MyMessage.h"
 
@@ -25,8 +26,6 @@
 
 //#define SOFT_KEY_8_PIN_PORT             GPIOB
 //#define SOFT_KEY_8_PIN_ID               GPIO_PIN_2
-
-u8 relay_key_value = 0;
 
 void relay_key_init()
 {
@@ -62,7 +61,14 @@ void relay_key_init()
   GPIO_Init(SOFT_KEY_8_PIN_PORT, SOFT_KEY_8_PIN_ID, GPIO_MODE_OUT_PP_LOW_SLOW);
 #endif
   
-  relay_key_value = 0;
+  // Restore previous on/off states
+  relay_restore_keystates();
+}
+
+void relay_restore_keystates() {
+  for( u8 key = '1'; key <= '8'; key++ ) {
+    relay_set_key(key, BF_GET(gConfig.relay_key_value, key - '1', 1));
+  }  
 }
 
 void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _on)
@@ -79,7 +85,7 @@ bool relay_get_key(u8 _key)
   bool rc = FALSE;
   
   if( _key >= '1' && _key <= '8' ) {
-    rc = BF_GET(relay_key_value, _key - '1', 1);
+    rc = BF_GET(gConfig.relay_key_value, _key - '1', 1);
   }
   
   return rc;
@@ -93,7 +99,7 @@ bool relay_set_key(u8 _key, bool _on)
   case '1':
 #ifdef SOFT_KEY_1_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_1_PIN_PORT, SOFT_KEY_1_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 0, 1);
+  BF_SET(gConfig.relay_key_value, _on, 0, 1);
   rc = TRUE;
 #endif    
     break;
@@ -101,7 +107,7 @@ bool relay_set_key(u8 _key, bool _on)
   case '2':
 #ifdef SOFT_KEY_2_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_2_PIN_PORT, SOFT_KEY_2_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 1, 1);
+  BF_SET(gConfig.relay_key_value, _on, 1, 1);
   rc = TRUE;
 #endif    
     break;
@@ -109,7 +115,7 @@ bool relay_set_key(u8 _key, bool _on)
   case '3':
 #ifdef SOFT_KEY_3_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_3_PIN_PORT, SOFT_KEY_3_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 2, 1);
+  BF_SET(gConfig.relay_key_value, _on, 2, 1);
   rc = TRUE;
 #endif    
     break;
@@ -117,7 +123,7 @@ bool relay_set_key(u8 _key, bool _on)
   case '4':
 #ifdef SOFT_KEY_4_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_4_PIN_PORT, SOFT_KEY_4_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 3, 1);
+  BF_SET(gConfig.relay_key_value, _on, 3, 1);
   rc = TRUE;
 #endif    
     break;
@@ -125,7 +131,7 @@ bool relay_set_key(u8 _key, bool _on)
   case '5':
 #ifdef SOFT_KEY_5_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_5_PIN_PORT, SOFT_KEY_5_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 4, 1);
+  BF_SET(gConfig.relay_key_value, _on, 4, 1);
   rc = TRUE;
 #endif    
     break;
@@ -133,7 +139,7 @@ bool relay_set_key(u8 _key, bool _on)
   case '6':
 #ifdef SOFT_KEY_6_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_6_PIN_PORT, SOFT_KEY_6_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 5, 1);
+  BF_SET(gConfig.relay_key_value, _on, 5, 1);
   rc = TRUE;
 #endif    
     break;
@@ -141,7 +147,7 @@ bool relay_set_key(u8 _key, bool _on)
   case '7':
 #ifdef SOFT_KEY_7_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_7_PIN_PORT, SOFT_KEY_7_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 6, 1);
+  BF_SET(gConfig.relay_key_value, _on, 6, 1);
   rc = TRUE;
 #endif    
     break;
@@ -149,7 +155,67 @@ bool relay_set_key(u8 _key, bool _on)
   case '8':
 #ifdef SOFT_KEY_8_PIN_ID
   relay_gpio_write_bit(SOFT_KEY_8_PIN_PORT, SOFT_KEY_8_PIN_ID, _on);
-  BF_SET(relay_key_value, _on, 7, 1);
+  BF_SET(gConfig.relay_key_value, _on, 7, 1);
+  rc = TRUE;
+#endif    
+    break;
+  }
+  
+  if( rc ) gIsChanged = TRUE;
+  
+  return rc;
+}
+
+bool IsValidRelaykey(u8 index)
+{
+  u8 key = index + '1';
+  bool rc = FALSE;
+  
+  switch( key ) {
+  case '1':
+#ifdef SOFT_KEY_1_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '2':
+#ifdef SOFT_KEY_2_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '3':
+#ifdef SOFT_KEY_3_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '4':
+#ifdef SOFT_KEY_4_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '5':
+#ifdef SOFT_KEY_5_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '6':
+#ifdef SOFT_KEY_6_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '7':
+#ifdef SOFT_KEY_7_PIN_ID
+  rc = TRUE;
+#endif    
+    break;
+
+  case '8':
+#ifdef SOFT_KEY_8_PIN_ID
   rc = TRUE;
 #endif    
     break;

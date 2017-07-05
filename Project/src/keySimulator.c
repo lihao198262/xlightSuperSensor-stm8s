@@ -15,15 +15,15 @@ typedef struct {
 #define KEYMAP_TABLE_ROWS          3
 const keyPinMap_t keyMapTable[] = {
   // target     key     port    pin
-  {0,           1,      GPIOD,  GPIO_PIN_4},    // Up
-  {0,           2,      GPIOD,  GPIO_PIN_3},    // Down
-  {0,           3, 	GPIOD, 	GPIO_PIN_2}     // Stop
+  {0,           '1',    GPIOD,  GPIO_PIN_4},    // Up
+  {0,           '2',    GPIOD,  GPIO_PIN_3},    // Down
+  {0,           '3', 	GPIOD, 	GPIO_PIN_2}     // Stop
 };
 
 bool LookupKeyPinMap(uint8_t target, uint8_t key, GPIO_TypeDef **port, GPIO_Pin_TypeDef *pin)
 {
   for( u8 i = 0; i < KEYMAP_TABLE_ROWS; i++ ) {
-    if( target == keyMapTable[i].target || key == keyMapTable[i].key ) {
+    if( target == keyMapTable[i].target && key == keyMapTable[i].key ) {
       *port = keyMapTable[i].port;
       *pin = keyMapTable[i].pin;
       return TRUE;
@@ -123,6 +123,10 @@ u8 SimulateKeyPress(u8 _target, u8 _op, u8 _key) {
       relay_gpio_write_bit(_port, _pin, TRUE);
       _delay = 50;
       break;
+    case KEY_OP_STYLE_VLONG_PRESS:
+      relay_gpio_write_bit(_port, _pin, TRUE);
+      _delay = 250;
+      break;
     case KEY_OP_STYLE_HOLD:
       relay_gpio_write_bit(_port, _pin, TRUE);
       _delay = 0;
@@ -149,6 +153,7 @@ bool FinishKeyPress(u8 _target, u8 _op, u8 _key, u8 _step) {
     case KEY_OP_STYLE_PRESS:
     case KEY_OP_STYLE_FAST_PRESS:
     case KEY_OP_STYLE_LONG_PRESS:
+    case KEY_OP_STYLE_VLONG_PRESS:
       relay_gpio_write_bit(_port, _pin, FALSE);
       break;
     case KEY_OP_STYLE_DBL_CLICK:

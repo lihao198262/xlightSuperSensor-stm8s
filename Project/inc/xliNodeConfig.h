@@ -15,6 +15,8 @@
 #define NCF_DEV_MAX_NMRT                12      // Max. Node Message Repeat Times, payload length = 2
 #define NCF_DEV_SET_SUBID               13      // Set device subid, payload length = 2
 #define NCF_DEV_CONFIG_MODE             14      // Put Device into Config Mode, payload length = 2
+#define NCF_DEV_SET_RELAY_NODE          15      // Set relay node id & subID, payload length = 2
+#define NCF_DEV_SET_RELAY_KEYS          16      // Set relay keys, payload length = 2 to 4
 
 #define NCF_PAN_SET_BTN_1               20      // Set Panel Button Action, payload length = 2
 #define NCF_PAN_SET_BTN_2               21      // Set Panel Button Action, payload length = 2
@@ -35,11 +37,12 @@
 #define KEY_OP_STYLE_PRESS              'p'      // Normal press, 200ms
 #define KEY_OP_STYLE_FAST_PRESS         'f'      // Fast press, 100ms
 #define KEY_OP_STYLE_LONG_PRESS         'l'      // Long-press, 500ms
+#define KEY_OP_STYLE_VLONG_PRESS        'v'      // Very long press, 2550ms
 #define KEY_OP_STYLE_HOLD               'h'      // Hold
 #define KEY_OP_STYLE_RELEASE            'r'      // Release
 #define KEY_OP_STYLE_DBL_CLICK          'd'      // Double-click
 
-// Key interval delimitator
+// Key interval delimitor
 #define KEY_DELI_NO_PAUSE               '+'      // No delay
 #define KEY_DELI_SMALL_PAUSE            ','      // Small pause, 200ms
 #define KEY_DELI_NORMAL_PAUSE           '.'      // Normal pause, 600ms
@@ -75,6 +78,7 @@ typedef enum
   sensorDUST            = ((uint16_t)0x0080),
   sensorLEAK            = ((uint16_t)0x0100),
   sensorBEAT            = ((uint16_t)0x0200),
+  sensorIRKey           = ((uint16_t)0x8000),
   sensor_All            = ((uint8_t)0xFFFF)
 }sensors_bit_t;
 

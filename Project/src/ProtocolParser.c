@@ -74,6 +74,7 @@ uint8_t ParseProtocol(){
         gConfig.subID = rcvMsg.payload.data[0];
         break;
 
+#ifdef EN_PANEL_BUTTONS        
       case NCF_PAN_SET_BTN_1:
       case NCF_PAN_SET_BTN_2:
       case NCF_PAN_SET_BTN_3:
@@ -85,6 +86,7 @@ uint8_t ParseProtocol(){
           gConfig.btnAction[targetSubID][lv_op].keyMap = rcvMsg.payload.data[1];
         }
         break;
+#endif
         
       case NCF_DEV_MAX_NMRT:
         gConfig.rptTimes = rcvMsg.payload.data[0];
@@ -276,7 +278,7 @@ void Msg_Relay_KeyMap(uint8_t _to) {
   build(_to, gConfig.subID, C_REQ, V_RELAY_MAP, 0, 1);
   moSetLength(1);
   moSetPayloadType(P_BYTE);
-  sndMsg.payload.bValue = relay_key_value;
+  sndMsg.payload.bValue = gConfig.relay_key_value;
   bMsgReady = 1;
 }
 
@@ -315,6 +317,17 @@ void Msg_SenMIC(uint16_t _value) {
 #ifdef EN_SENSOR_PIR
 // Prepare PIR message
 void Msg_SenPIR(bool _sw) {
+  build(NODEID_GATEWAY, S_MOTION, C_PRESENTATION, V_STATUS, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(1);
+  sndMsg.payload.data[0] = _sw;
+  bMsgReady = 1;
+}
+#endif
+
+#ifdef EN_SENSOR_IRKEY
+// Prepare IR Key Bitmap message
+void Msg_SenIRKey(uint8_t _sw) {
   build(NODEID_GATEWAY, S_IR, C_PRESENTATION, V_STATUS, 0, 0);
   moSetPayloadType(P_BYTE);
   moSetLength(1);
@@ -322,7 +335,7 @@ void Msg_SenPIR(bool _sw) {
   bMsgReady = 1;
 }
 #endif
-  
+
 #ifdef EN_SENSOR_PM25
 // Prepare PM2.5 message
 void Msg_SenPM25(uint16_t _value) {
@@ -342,7 +355,7 @@ type 0  ---- all
 type 1  ---- tem
 type 2  ---- hum
 */
-void Msg_SenDHT(uint16_t dht_t,uint16_t dht_h,u8 type) {
+void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type) {
   if(type == 0)
   {
       build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
