@@ -22,7 +22,7 @@ void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _typ
 }
 
 uint8_t ParseProtocol(){
-  if( rcvMsg.header.destination != gConfig.nodeID ) return 0;
+  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && rcvMsg.header.sender == NODEID_RF_SCANNER) ) return 0;
   
   uint8_t _cmd = miGetCommand();
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
@@ -61,6 +61,15 @@ uint8_t ParseProtocol(){
         //}
         return 0;
       }
+    } else if( _type == I_GET_NONCE ) {
+      // RF Scanner Probe
+      if( _sender == NODEID_RF_SCANNER ) {
+        if( rcvMsg.payload.data[0] == SCANNER_PROBE ) {
+          MsgScanner_ProbeAck();
+        } else if( rcvMsg.payload.data[0] == SCANNER_SETUP_RF ) {
+        }
+        return 1;
+      }      
     } else if( _type == I_CONFIG ) {
       // Node Config
       switch( _sensor ) {
@@ -386,3 +395,27 @@ void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type) {
   bMsgReady = 1; 
 }
 #endif
+
+//----------------------------------------------
+// RF Scanner Messages
+//----------------------------------------------
+// Probe ack message
+void MsgScanner_ProbeAck() {
+  uint8_t payl_len = UNIQUE_ID_LEN;
+  build(NODEID_RF_SCANNER, 0x00, C_INTERNAL, I_GET_NONCE_RESPONSE, 0, 1);
+
+  memcpy(sndMsg.payload.data, _uniqueID, UNIQUE_ID_LEN);
+  sndMsg.payload.data[payl_len++] = gConfig.version;
+  sndMsg.payload.data[payl_len++] = gConfig.type;
+  sndMsg.payload.data[payl_len++] = gConfig.nodeID;
+  sndMsg.payload.data[payl_len++] = gConfig.subID;
+  sndMsg.payload.data[payl_len++] = gConfig.rfChannel;
+  sndMsg.payload.data[payl_len++] = gConfig.rfDataRate << 2 + gConfig.rfPowerLevel;
+  memcpy(sndMsg.payload.data + payl_len, gConfig.NetworkID, sizeof(gConfig.NetworkID));
+  payl_len += sizeof(gConfig.NetworkID);
+  
+  moSetLength(payl_len);
+  moSetPayloadType(P_CUSTOM);
+  bMsgReady = 1;
+}
+//----------------------------------------------
