@@ -28,7 +28,7 @@
 #ifdef ZENREMOTE
 #undef EN_SENSOR_DHT
 #else
-//#define EN_SENSOR_DHT
+#define EN_SENSOR_DHT
 #endif
 
 // Common Data Type
@@ -64,6 +64,7 @@
 #define NODEID_SMARTPHONE       139
 #define NODEID_MIN_GROUP        192
 #define NODEID_MAX_GROUP        223
+#define NODEID_RF_SCANNER       250
 #define NODEID_DUMMY            255
 #define BASESERVICE_ADDRESS     0xFE
 #define BROADCAST_ADDRESS       0xFF
@@ -75,6 +76,21 @@
 #define ZEN_TARGET_CURTAIN      0x80
 #define ZEN_TARGET_AIRPURIFIER  0x90
 #define ZEN_TARGET_AIRCONDITION 0xA0
+
+// I_GET_NONCE sub-type
+enum {
+    SCANNER_PROBE = 0,
+    SCANNER_SETUP_RF,           // by NodeID & SubID
+    SCANNER_SETUPDEV_RF,        // by UniqueID
+    
+    SCANNER_GETCONFIG = 8,      // by NodeID & SubID
+    SCANNER_SETCONFIG,
+    SCANNER_GETDEV_CONFIG,      // by UniqueID
+    SCANNER_SETDEV_CONFIG,
+    
+    SCANNER_TEST_NODE = 16,     // by NodeID & SubID
+    SCANNER_TEST_DEVICE,        // by UniqueID
+};
 
 typedef struct
 {
@@ -101,6 +117,8 @@ typedef struct
   UC reserved1                :1;
   US senMap                   :16;          // Sensor Map
   UC relay_key_value          :8;           // Relay Key Bitmap
+  UC rfChannel;                             // RF Channel: [0..127]
+  UC rfDataRate               :2;           // RF Data Rate [0..2], 0 for 1Mbps, or 1 for 2Mbps, 2 for 250kbs
 #ifdef EN_PANEL_BUTTONS  
   Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
 #endif  
