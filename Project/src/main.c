@@ -308,7 +308,7 @@ void LoadConfig()
     gConfig.senMap |= sensorDUST;
     gConfig.senMap |= sensorIRKey;
     
-#ifdef EN_PANEL_BUTTONS    
+#ifdef EN_PANEL_BUTTONS
     if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
       memset(gConfig.btnAction, 0x00, sizeof(Button_Action_t) * MAX_NUM_BUTTONS);
     }
@@ -786,9 +786,12 @@ void tmrProcess() {
       ScanKeyBuffer(i);
     }
   }
+  
+#ifdef EN_PANEL_BUTTONS  
   //////zql add for relay key//////////////
   if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
+#endif  
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
