@@ -401,10 +401,13 @@ void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type) {
 //----------------------------------------------
 // Probe ack message
 void MsgScanner_ProbeAck() {
-  uint8_t payl_len = UNIQUE_ID_LEN;
+  uint8_t payl_len = UNIQUE_ID_LEN + 1;
   build(NODEID_RF_SCANNER, 0x00, C_INTERNAL, I_GET_NONCE_RESPONSE, 0, 1);
 
-  memcpy(sndMsg.payload.data, _uniqueID, UNIQUE_ID_LEN);
+  // Common payload
+  sndMsg.payload.data[0] = SCANNER_PROBE;
+  memcpy(sndMsg.payload.data + 1, _uniqueID, UNIQUE_ID_LEN);
+  
   sndMsg.payload.data[payl_len++] = gConfig.version;
   sndMsg.payload.data[payl_len++] = gConfig.type;
   sndMsg.payload.data[payl_len++] = gConfig.nodeID;
