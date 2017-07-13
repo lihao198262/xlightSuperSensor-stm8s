@@ -98,6 +98,39 @@ typedef struct
   UC keyMap;                                // Button Key Map: 8 bits for each button, one bit corresponds to one relay key
 } Button_Action_t;
 
+// Xlight Application Identification
+#define XLA_VERSION               0x08
+#define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
+
+#if XLA_VERSION > 0x07
+typedef struct
+{
+  // Static & status parameters
+  UC version                  :8;           // Data version, other than 0xFF
+  UC present                  :1;           // 0 - not present; 1 - present
+  UC state                    :1;           // SuperSensor On/Off
+  UC swTimes                  :3;           // On/Off times
+  UC reserved0                :3;
+  UC relay_key_value          :8;           // Relay Key Bitmap
+
+  // Configurable parameters
+  UC nodeID;                                // Node ID for this device
+  UC subID;                                 // SubID
+  UC NetworkID[6];
+  UC rfChannel;                             // RF Channel: [0..127]
+  UC rfPowerLevel             :2;           // RF Power Level 0..3
+  UC rfDataRate               :2;           // RF Data Rate [0..2], 0 for 1Mbps, or 1 for 2Mbps, 2 for 250kbs
+  UC rptTimes                 :2;           // Sending message max repeat times [0..3]
+  UC reserved1                :2;
+  UC type;                                  // Type of SuperSensor
+  US token;
+  UC reserved2                :8;
+  US senMap                   :16;          // Sensor Map
+#ifdef EN_PANEL_BUTTONS  
+  Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
+#endif  
+} Config_t;
+#else
 typedef struct
 {
   UC version                  :8;           // Data version, other than 0xFF
@@ -123,6 +156,7 @@ typedef struct
   Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
 #endif  
 } Config_t;
+#endif
 
 extern Config_t gConfig;
 extern bool gIsChanged;

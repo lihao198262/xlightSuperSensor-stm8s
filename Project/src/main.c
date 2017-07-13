@@ -64,10 +64,6 @@ Connections:
 
 */
 
-// Xlight Application Identification
-#define XLA_VERSION               0x02
-#define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
-
 // Choose Product Name & Type
 #ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
