@@ -76,6 +76,8 @@
 #define ZEN_TARGET_CURTAIN      0x80
 #define ZEN_TARGET_AIRPURIFIER  0x90
 #define ZEN_TARGET_AIRCONDITION 0xA0
+#define ZEN_TARGET_SPOTLIGHT    0xB0
+#define ZEN_TARGET_SUPERSENSOR  0xC0
 
 // I_GET_NONCE sub-type
 enum {
@@ -173,5 +175,7 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define IS_TARGET_CURTAIN(nTag)         (((nTag) & 0xF0) == ZEN_TARGET_CURTAIN)
 #define IS_TARGET_AIRPURIFIER(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_AIRPURIFIER)
 #define IS_TARGET_AIRCONDITION(nTag)    (((nTag) & 0xF0) == ZEN_TARGET_AIRCONDITION)
+#define IS_TARGET_SPOTLIGHT(nTag)       (((nTag) & 0xF0) == ZEN_TARGET_SPOTLIGHT)
+#define IS_TARGET_SUPERSENSOR(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_SUPERSENSOR)
 
 #endif /* __GLOBAL_H */
