@@ -490,12 +490,13 @@ void MsgScanner_ConfigAck(uint8_t offset,uint8_t cfglen,bool _isStart) {
 //{
 //    uint8_t subtype;
 //    uint8_t offset;  //config offset
-//    UC ConfigBlock[22];
+//    UC ConfigBlock[23];
 //}MyMsgPayload_t
 //////set config by nodeid&subid data struct/////////////////////
 void Process_SetConfig(u8 _len) {
   uint8_t offset = rcvMsg.payload.data[1];
   memcpy((void *)((uint16_t)(&gConfig) + offset),rcvMsg.payload.data+2,_len);
+  gIsChanged = TRUE;
 }
 
 bool isUniqueEqual(const UC *pId1, const UC *pId2, UC nLen)
@@ -510,15 +511,12 @@ bool isUniqueEqual(const UC *pId1, const UC *pId2, UC nLen)
 //    uint8_t offset;   //config offset
 //    uint8_t uniqueid[8];
 //    
-//    UC ConfigBlock[16];
+//    UC ConfigBlock[15];
 //}MyMsgPayload_t
 //////set config by uniqueid data struct/////////////////////
 void Process_SetDevConfig(u8 _len) {
     uint8_t offset = rcvMsg.payload.data[1];
     memcpy((void *)((uint16_t)(&gConfig) + offset),rcvMsg.payload.data+2+UNIQUE_ID_LEN,_len);
-    if(offset + _len >= sizeof(Config_t))
-    {
-      SaveConfig();
-    }
+    gIsChanged = TRUE;
 }
 //----------------------------------------------
