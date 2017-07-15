@@ -810,6 +810,16 @@ void tmrProcess() {
   if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
 #endif  
+ 
+  ////////////rfscanner process///////////////////////////////
+  ///// zql add for multiple config block ////////////////////
+  if(!bMsgReady) MsgScanner_ConfigAck(0,0,FALSE);
+  ///// zql add for multiple config block ////////////////////    
+  // Send message if ready
+  SendMyMessage(); 
+  // Save Config if Changed
+  SaveConfig();
+  ////////////rfscanner process///////////////////////////////
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
