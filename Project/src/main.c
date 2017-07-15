@@ -64,18 +64,14 @@ Connections:
 
 */
 
-// Xlight Application Identification
-#define XLA_VERSION               0x02
-#define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
-
 // Choose Product Name & Type
 #ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
-#define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_Type          ZEN_TARGET_SUPERSENSOR
 #define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
 #else
 #define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 
@@ -318,12 +314,16 @@ void LoadConfig()
 #endif    
 }
 
-void UpdateNodeAddress(void) {
+void UpdateNodeAddress(uint8_t _tx) {
   memcpy(rx_addr, gConfig.NetworkID, ADDRESS_WIDTH);
   rx_addr[0] = gConfig.nodeID;
   memcpy(tx_addr, gConfig.NetworkID, ADDRESS_WIDTH);
-  tx_addr[0] = (isNodeIdRequired() ? BASESERVICE_ADDRESS : NODEID_GATEWAY);
-  RF24L01_setup(gConfig.rfChannel, gConfig.rfDataRate, gConfig.rfPowerLevel, 1);
+  if( _tx == NODEID_RF_SCANNER ) {
+    tx_addr[0] = NODEID_RF_SCANNER;
+  } else {
+    tx_addr[0] = (isNodeIdRequired() ? BASESERVICE_ADDRESS : NODEID_GATEWAY);
+  }
+  RF24L01_setup(gConfig.rfChannel, gConfig.rfDataRate, gConfig.rfPowerLevel, BROADCAST_ADDRESS);
 }
 
 bool WaitMutex(uint32_t _timeout) {
@@ -334,10 +334,25 @@ bool WaitMutex(uint32_t _timeout) {
   return FALSE;
 }
 
+bool NeedUpdateRFAddress(uint8_t _dest) {
+  bool rc = FALSE;
+  if( sndMsg.header.destination == NODEID_RF_SCANNER && tx_addr[0] != NODEID_RF_SCANNER ) {
+    UpdateNodeAddress(NODEID_RF_SCANNER);
+    rc = TRUE;
+  } else if( sndMsg.header.destination != NODEID_RF_SCANNER && tx_addr[0] != NODEID_GATEWAY ) {
+    UpdateNodeAddress(NODEID_GATEWAY);
+    rc = TRUE;
+  }
+  return rc;
+}
+
 // Send message and switch back to receive mode
 bool SendMyMessage() {
   if( bMsgReady ) {
     
+    // Change tx destination if necessary
+    NeedUpdateRFAddress(sndMsg.header.destination);
+      
     uint8_t lv_tried = 0;
     uint16_t delay;
     while (lv_tried++ <= gConfig.rptTimes ) {
@@ -373,7 +388,7 @@ bool SendMyMessage() {
           while(delay--)feed_wwdg();
           RF24L01_init();
           NRF2401_EnableIRQ();
-          UpdateNodeAddress();
+          UpdateNodeAddress(NODEID_GATEWAY);
           continue;
         }
       }
@@ -399,7 +414,7 @@ bool SendMyMessage() {
 
 void GotNodeID() {
   mGotNodeID = TRUE;
-  UpdateNodeAddress();
+  UpdateNodeAddress(NODEID_GATEWAY);
   SaveConfig();
 }
 
@@ -416,7 +431,7 @@ bool SayHelloToDevice(bool infinate) {
   bool _doNow = FALSE;
 
   // Update RF addresses and Setup RF environment
-  UpdateNodeAddress();
+  UpdateNodeAddress(NODEID_GATEWAY);
 
   while(mStatus < SYS_RUNNING) {
     if( _count++ == 0 ) {
@@ -463,7 +478,7 @@ bool SayHelloToDevice(bool infinate) {
       _presentCnt = 0;
       // Reset RF Address
       InitNodeAddress();
-      UpdateNodeAddress();
+      UpdateNodeAddress(NODEID_GATEWAY);
       mStatus = SYS_WAIT_NODEID;
       _doNow = TRUE;
     }
