@@ -14,12 +14,6 @@ void Process_SetConfig(u8 _len);
 void Process_SetDevConfig(u8 _len);
 bool isUniqueEqual(const UC *pId1, const UC *pId2, UC nLen);
 
-void SetWriteAddress2Scanner() {
-  memcpy(tx_addr, gConfig.NetworkID, ADDRESS_WIDTH);
-  tx_addr[0] =  250;
-  RF24L01_setup(gConfig.rfChannel, gConfig.rfDataRate, gConfig.rfPowerLevel, 255);
-}
-
 // Assemble message
 void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _type, bool _enableAck, bool _isAck)
 {
@@ -76,7 +70,6 @@ uint8_t ParseProtocol(){
     } else if( _type == I_GET_NONCE ) {
       // RF Scanner Probe
       if( _sender == NODEID_RF_SCANNER ) {
-        SetWriteAddress2Scanner();
         if( rcvMsg.payload.data[0] == SCANNER_PROBE ) {      
           MsgScanner_ProbeAck();
         } else if( rcvMsg.payload.data[0] == SCANNER_SETUP_RF ) {
