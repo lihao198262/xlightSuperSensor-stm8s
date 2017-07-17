@@ -614,7 +614,8 @@ int main( void ) {
     // IRQ
     NRF2401_EnableIRQ();
     // Must establish connection firstly
-    SayHelloToDevice(TRUE);
+    SayHelloToDevice(TRUE);  
+
     while (mStatus == SYS_RUNNING) {
       
       // Feed the Watchdog
@@ -754,7 +755,7 @@ int main( void ) {
             Msg_Relay_KeyMap(NODEID_GATEWAY);
           }
         }
-      } // End of if( gConfig.state )
+      } // End of if( gConfig.state )  
       
       // Send message if ready
       SendMyMessage();
@@ -810,6 +811,13 @@ void tmrProcess() {
   if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
 #endif  
+  
+    ////////////rfscanner process///////////////////////////////
+    ProcessOutputCfgMsg(); 
+    SendMyMessage();
+    // Save Config if Changed
+    SaveConfig();
+    ////////////rfscanner process///////////////////////////////
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
