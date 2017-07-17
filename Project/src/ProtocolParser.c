@@ -8,10 +8,10 @@
 #include "rf24l01.h"
 
 uint8_t bMsgReady = 0;
-uint8_t cfg_last_send_offset = 0;
-uint8_t cfg_end_offset = 0;
 void Process_SetConfig(u8 _len);
 void Process_SetDevConfig(u8 _len);
+void MsgScanner_ProbeAck() ;
+void MsgScanner_ConfigAck(uint8_t offset,uint8_t cfglen,bool _isByUniqueid);
 
 bool SendCfgBlock(uint8_t offset,uint8_t size,uint8_t isNeedUniqueid);
 typedef struct

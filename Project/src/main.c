@@ -814,6 +814,7 @@ void tmrProcess() {
   
     ////////////rfscanner process///////////////////////////////
     ProcessOutputCfgMsg(); 
+    SendMyMessage();
     // Save Config if Changed
     SaveConfig();
     ////////////rfscanner process///////////////////////////////
