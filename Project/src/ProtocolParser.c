@@ -12,6 +12,7 @@ void Process_SetConfig(u8 _len);
 void Process_SetDevConfig(u8 _len);
 void MsgScanner_ProbeAck() ;
 void MsgScanner_ConfigAck(uint8_t offset,uint8_t cfglen,bool _isByUniqueid);
+void Process_SetupRF(const UC *rfData);
 
 bool SendCfgBlock(uint8_t offset,uint8_t size,uint8_t isNeedUniqueid);
 typedef struct
@@ -123,6 +124,8 @@ uint8_t ParseProtocol(){
         if( rcvMsg.payload.data[0] == SCANNER_PROBE ) {      
           MsgScanner_ProbeAck();
         } else if( rcvMsg.payload.data[0] == SCANNER_SETUP_RF ) {
+          if(!isIdentityEqual(rcvMsg.payload.data + 2,_uniqueID,UNIQUE_ID_LEN)) return 0;
+          Process_SetupRF(rcvMsg.payload.data + 2 + UNIQUE_ID_LEN);
         }
         else if( rcvMsg.payload.data[0] == SCANNER_SETCONFIG ) {
           if(!IS_MINE_SUBID(_sensor)) return 0;          
@@ -557,5 +560,20 @@ void Process_SetDevConfig(u8 _len) {
     uint8_t offset = rcvMsg.payload.data[1];
     memcpy((void *)((uint16_t)(&gConfig) + offset),rcvMsg.payload.data+2+UNIQUE_ID_LEN,_len);
     gIsChanged = TRUE;
+}
+//////set rf /////////////////////////////////////////////////
+//typedef struct
+//{
+//    uint8_t subtype;
+//    uint8_t channel;
+//    uint8_t datarate;
+//    uint8_t powerlevel;
+//}MyMsgPayload_t
+//////set rf /////////////////////////////////////////////////
+void Process_SetupRF(const UC *rfData)
+{
+  gConfig.rfChannel = (*rfData++);
+  gConfig.rfDataRate = (*rfData++);
+  gConfig.rfDataRate = (*rfData++);
 }
 //----------------------------------------------
