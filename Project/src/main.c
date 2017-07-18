@@ -127,6 +127,8 @@ MyMessage_t sndMsg, rcvMsg;
 uint8_t *psndMsg = (uint8_t *)&sndMsg;
 uint8_t *prcvMsg = (uint8_t *)&rcvMsg;
 bool gIsChanged = FALSE;
+bool gResetRF = FALSE;
+bool gResetNode = FALSE;
 uint8_t _uniqueID[UNIQUE_ID_LEN];
 
 // Moudle variables
@@ -346,6 +348,23 @@ bool NeedUpdateRFAddress(uint8_t _dest) {
   return rc;
 }
 
+// reset rf
+void ResetRFModule()
+{
+  if(gResetRF)
+  {
+    RF24L01_init();
+    NRF2401_EnableIRQ();
+    UpdateNodeAddress(NODEID_GATEWAY);
+    gResetRF=FALSE;
+  }
+  if(gResetNode)
+  {
+    mStatus = SYS_RESET;
+    gResetNode=FALSE;
+  }
+}
+
 // Send message and switch back to receive mode
 bool SendMyMessage() {
   if( bMsgReady ) {
@@ -434,6 +453,12 @@ bool SayHelloToDevice(bool infinate) {
   UpdateNodeAddress(NODEID_GATEWAY);
 
   while(mStatus < SYS_RUNNING) {
+    ////////////rfscanner process///////////////////////////////
+    ProcessOutputCfgMsg(); 
+    SendMyMessage();
+    ResetRFModule();
+    SaveConfig();
+    ////////////rfscanner process/////////////////////////////// 
     if( _count++ == 0 ) {
       
       if( isNodeIdRequired() ) {
@@ -756,7 +781,11 @@ int main( void ) {
           }
         }
       } // End of if( gConfig.state )  
-      
+      ////////////rfscanner process///////////////////////////////
+      ProcessOutputCfgMsg(); 
+      // reset rf
+      ResetRFModule();
+      ////////////rfscanner process/////////////////////////////// 
       // Send message if ready
       SendMyMessage();
       
@@ -812,12 +841,6 @@ void tmrProcess() {
   //////zql add for relay key//////////////
 #endif  
   
-    ////////////rfscanner process///////////////////////////////
-    ProcessOutputCfgMsg(); 
-    SendMyMessage();
-    // Save Config if Changed
-    SaveConfig();
-    ////////////rfscanner process///////////////////////////////
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {

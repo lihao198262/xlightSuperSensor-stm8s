@@ -17,6 +17,7 @@ void Msg_Relay_Ack(uint8_t _to, uint8_t _type, uint8_t _state);
 
 void MsgScanner_ProbeAck();
 void MsgScanner_ConfigAck(uint8_t offset,uint8_t cfglen,bool _isStart); 
+bool ProcessOutputCfgMsg();
 
 #ifdef EN_SENSOR_ALS
 void Msg_SenALS(uint8_t _value);
