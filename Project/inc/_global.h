@@ -18,10 +18,10 @@
 
 // Include Sensors
 /// Comment off line to disable sensor
-#define EN_SENSOR_ALS
+//#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
-#define EN_SENSOR_PM25
+//#define EN_SENSOR_PM25
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
@@ -64,6 +64,7 @@
 #define NODEID_SMARTPHONE       139
 #define NODEID_MIN_GROUP        192
 #define NODEID_MAX_GROUP        223
+#define NODEID_RF_SCANNER       250
 #define NODEID_DUMMY            255
 #define BASESERVICE_ADDRESS     0xFE
 #define BROADCAST_ADDRESS       0xFF
@@ -75,6 +76,23 @@
 #define ZEN_TARGET_CURTAIN      0x80
 #define ZEN_TARGET_AIRPURIFIER  0x90
 #define ZEN_TARGET_AIRCONDITION 0xA0
+#define ZEN_TARGET_SPOTLIGHT    0xB0
+#define ZEN_TARGET_SUPERSENSOR  0xC0
+
+// I_GET_NONCE sub-type
+enum {
+    SCANNER_PROBE = 0,
+    SCANNER_SETUP_RF,           // by NodeID & SubID
+    SCANNER_SETUPDEV_RF,        // by UniqueID
+    
+    SCANNER_GETCONFIG = 8,      // by NodeID & SubID
+    SCANNER_SETCONFIG,
+    SCANNER_GETDEV_CONFIG,      // by UniqueID
+    SCANNER_SETDEV_CONFIG,
+    
+    SCANNER_TEST_NODE = 16,     // by NodeID & SubID
+    SCANNER_TEST_DEVICE,        // by UniqueID
+};
 
 typedef struct
 {
@@ -82,6 +100,39 @@ typedef struct
   UC keyMap;                                // Button Key Map: 8 bits for each button, one bit corresponds to one relay key
 } Button_Action_t;
 
+// Xlight Application Identification
+#define XLA_VERSION               0x08
+#define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
+
+#if XLA_VERSION > 0x07
+typedef struct
+{
+  // Static & status parameters
+  UC version                  :8;           // Data version, other than 0xFF
+  UC present                  :1;           // 0 - not present; 1 - present
+  UC state                    :1;           // SuperSensor On/Off
+  UC swTimes                  :3;           // On/Off times
+  UC reserved0                :3;
+  UC relay_key_value          :8;           // Relay Key Bitmap
+
+  // Configurable parameters
+  UC nodeID;                                // Node ID for this device
+  UC subID;                                 // SubID
+  UC NetworkID[6];
+  UC rfChannel;                             // RF Channel: [0..127]
+  UC rfPowerLevel             :2;           // RF Power Level 0..3
+  UC rfDataRate               :2;           // RF Data Rate [0..2], 0 for 1Mbps, or 1 for 2Mbps, 2 for 250kbs
+  UC rptTimes                 :2;           // Sending message max repeat times [0..3]
+  UC reserved1                :2;
+  UC type;                                  // Type of SuperSensor
+  US token;
+  UC reserved2                :8;
+  US senMap                   :16;          // Sensor Map
+#ifdef EN_PANEL_BUTTONS  
+  Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
+#endif  
+} Config_t;
+#else
 typedef struct
 {
   UC version                  :8;           // Data version, other than 0xFF
@@ -101,13 +152,18 @@ typedef struct
   UC reserved1                :1;
   US senMap                   :16;          // Sensor Map
   UC relay_key_value          :8;           // Relay Key Bitmap
+  UC rfChannel;                             // RF Channel: [0..127]
+  UC rfDataRate               :2;           // RF Data Rate [0..2], 0 for 1Mbps, or 1 for 2Mbps, 2 for 250kbs
 #ifdef EN_PANEL_BUTTONS  
   Button_Action_t btnAction[MAX_NUM_BUTTONS][8];
 #endif  
 } Config_t;
+#endif
 
 extern Config_t gConfig;
 extern bool gIsChanged;
+extern bool gResetRF;
+extern bool gResetNode;
 extern uint8_t _uniqueID[UNIQUE_ID_LEN];
 
 bool isIdentityEqual(const UC *pId1, const UC *pId2, UC nLen);
@@ -121,5 +177,7 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define IS_TARGET_CURTAIN(nTag)         (((nTag) & 0xF0) == ZEN_TARGET_CURTAIN)
 #define IS_TARGET_AIRPURIFIER(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_AIRPURIFIER)
 #define IS_TARGET_AIRCONDITION(nTag)    (((nTag) & 0xF0) == ZEN_TARGET_AIRCONDITION)
+#define IS_TARGET_SPOTLIGHT(nTag)       (((nTag) & 0xF0) == ZEN_TARGET_SPOTLIGHT)
+#define IS_TARGET_SUPERSENSOR(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_SUPERSENSOR)
 
 #endif /* __GLOBAL_H */

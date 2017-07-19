@@ -64,18 +64,14 @@ Connections:
 
 */
 
-// Xlight Application Identification
-#define XLA_VERSION               0x02
-#define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
-
 // Choose Product Name & Type
 #ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
-#define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_Type          ZEN_TARGET_SUPERSENSOR
 #define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
 #else
 #define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          1
+#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 
@@ -131,6 +127,8 @@ MyMessage_t sndMsg, rcvMsg;
 uint8_t *psndMsg = (uint8_t *)&sndMsg;
 uint8_t *prcvMsg = (uint8_t *)&rcvMsg;
 bool gIsChanged = FALSE;
+bool gResetRF = FALSE;
+bool gResetNode = FALSE;
 uint8_t _uniqueID[UNIQUE_ID_LEN];
 
 // Moudle variables
@@ -262,7 +260,7 @@ void LoadConfig()
 {
     // Load the most recent settings from FLASH
     Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != XLA_PRODUCT_NODEID ) {
+    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != XLA_PRODUCT_NODEID || gConfig.rfChannel > 127 || gConfig.rfDataRate > 2 ) {
       memset(&gConfig, 0x00, sizeof(gConfig));
       gConfig.version = XLA_VERSION;
       InitNodeAddress();
@@ -271,6 +269,9 @@ void LoadConfig()
       gConfig.rptTimes = 1;
       //sprintf(gConfig.Organization, "%s", XLA_ORGANIZATION);
       //sprintf(gConfig.ProductName, "%s", XLA_PRODUCT_NAME);
+      gConfig.rfChannel = RF24_CHANNEL;
+      gConfig.rfPowerLevel = RF24_PA_MAX;
+      gConfig.rfDataRate = RF24_1MBPS;
 
 #ifdef EN_SENSOR_ALS
       gConfig.senMap |= sensorALS;
@@ -308,19 +309,23 @@ void LoadConfig()
     gConfig.senMap |= sensorDUST;
     gConfig.senMap |= sensorIRKey;
     
-#ifdef EN_PANEL_BUTTONS    
+#ifdef EN_PANEL_BUTTONS
     if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
       memset(gConfig.btnAction, 0x00, sizeof(Button_Action_t) * MAX_NUM_BUTTONS);
     }
 #endif    
 }
 
-void UpdateNodeAddress(void) {
+void UpdateNodeAddress(uint8_t _tx) {
   memcpy(rx_addr, gConfig.NetworkID, ADDRESS_WIDTH);
   rx_addr[0] = gConfig.nodeID;
   memcpy(tx_addr, gConfig.NetworkID, ADDRESS_WIDTH);
-  tx_addr[0] = (isNodeIdRequired() ? BASESERVICE_ADDRESS : NODEID_GATEWAY);
-  RF24L01_setup(RF24_CHANNEL, 0);
+  if( _tx == NODEID_RF_SCANNER ) {
+    tx_addr[0] = NODEID_RF_SCANNER;
+  } else {
+    tx_addr[0] = (isNodeIdRequired() ? BASESERVICE_ADDRESS : NODEID_GATEWAY);
+  }
+  RF24L01_setup(gConfig.rfChannel, gConfig.rfDataRate, gConfig.rfPowerLevel, BROADCAST_ADDRESS);
 }
 
 bool WaitMutex(uint32_t _timeout) {
@@ -331,10 +336,42 @@ bool WaitMutex(uint32_t _timeout) {
   return FALSE;
 }
 
+bool NeedUpdateRFAddress(uint8_t _dest) {
+  bool rc = FALSE;
+  if( sndMsg.header.destination == NODEID_RF_SCANNER && tx_addr[0] != NODEID_RF_SCANNER ) {
+    UpdateNodeAddress(NODEID_RF_SCANNER);
+    rc = TRUE;
+  } else if( sndMsg.header.destination != NODEID_RF_SCANNER && tx_addr[0] != NODEID_GATEWAY ) {
+    UpdateNodeAddress(NODEID_GATEWAY);
+    rc = TRUE;
+  }
+  return rc;
+}
+
+// reset rf
+void ResetRFModule()
+{
+  if(gResetRF)
+  {
+    RF24L01_init();
+    NRF2401_EnableIRQ();
+    UpdateNodeAddress(NODEID_GATEWAY);
+    gResetRF=FALSE;
+  }
+  if(gResetNode)
+  {
+    mStatus = SYS_RESET;
+    gResetNode=FALSE;
+  }
+}
+
 // Send message and switch back to receive mode
 bool SendMyMessage() {
   if( bMsgReady ) {
     
+    // Change tx destination if necessary
+    NeedUpdateRFAddress(sndMsg.header.destination);
+      
     uint8_t lv_tried = 0;
     uint16_t delay;
     while (lv_tried++ <= gConfig.rptTimes ) {
@@ -370,7 +407,7 @@ bool SendMyMessage() {
           while(delay--)feed_wwdg();
           RF24L01_init();
           NRF2401_EnableIRQ();
-          UpdateNodeAddress();
+          UpdateNodeAddress(NODEID_GATEWAY);
           continue;
         }
       }
@@ -396,7 +433,7 @@ bool SendMyMessage() {
 
 void GotNodeID() {
   mGotNodeID = TRUE;
-  UpdateNodeAddress();
+  UpdateNodeAddress(NODEID_GATEWAY);
   SaveConfig();
 }
 
@@ -413,9 +450,15 @@ bool SayHelloToDevice(bool infinate) {
   bool _doNow = FALSE;
 
   // Update RF addresses and Setup RF environment
-  UpdateNodeAddress();
+  UpdateNodeAddress(NODEID_GATEWAY);
 
   while(mStatus < SYS_RUNNING) {
+    ////////////rfscanner process///////////////////////////////
+    ProcessOutputCfgMsg(); 
+    SendMyMessage();
+    ResetRFModule();
+    SaveConfig();
+    ////////////rfscanner process/////////////////////////////// 
     if( _count++ == 0 ) {
       
       if( isNodeIdRequired() ) {
@@ -460,7 +503,7 @@ bool SayHelloToDevice(bool infinate) {
       _presentCnt = 0;
       // Reset RF Address
       InitNodeAddress();
-      UpdateNodeAddress();
+      UpdateNodeAddress(NODEID_GATEWAY);
       mStatus = SYS_WAIT_NODEID;
       _doNow = TRUE;
     }
@@ -596,7 +639,8 @@ int main( void ) {
     // IRQ
     NRF2401_EnableIRQ();
     // Must establish connection firstly
-    SayHelloToDevice(TRUE);
+    SayHelloToDevice(TRUE);  
+
     while (mStatus == SYS_RUNNING) {
       
       // Feed the Watchdog
@@ -736,8 +780,12 @@ int main( void ) {
             Msg_Relay_KeyMap(NODEID_GATEWAY);
           }
         }
-      } // End of if( gConfig.state )
-      
+      } // End of if( gConfig.state )  
+      ////////////rfscanner process///////////////////////////////
+      ProcessOutputCfgMsg(); 
+      // reset rf
+      ResetRFModule();
+      ////////////rfscanner process/////////////////////////////// 
       // Send message if ready
       SendMyMessage();
       
@@ -786,9 +834,13 @@ void tmrProcess() {
       ScanKeyBuffer(i);
     }
   }
+  
+#ifdef EN_PANEL_BUTTONS  
   //////zql add for relay key//////////////
   if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
+#endif  
+  
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
