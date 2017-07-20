@@ -498,7 +498,7 @@ void MsgScanner_ProbeAck() {
   sndMsg.payload.data[payl_len++] = gConfig.nodeID;
   sndMsg.payload.data[payl_len++] = gConfig.subID;
   sndMsg.payload.data[payl_len++] = gConfig.rfChannel;
-  sndMsg.payload.data[payl_len++] = gConfig.rfDataRate << 2 + gConfig.rfPowerLevel;
+  sndMsg.payload.data[payl_len++] = (gConfig.rfDataRate << 2) + gConfig.rfPowerLevel;
   memcpy(sndMsg.payload.data + payl_len, gConfig.NetworkID, sizeof(gConfig.NetworkID));
   payl_len += sizeof(gConfig.NetworkID);
   
@@ -584,29 +584,41 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
   {
     if(gConfig.rfChannel != (*rfData))
     {
-      gConfig.rfChannel = (*rfData++);
+      gConfig.rfChannel = (*rfData);
       gResetRF = TRUE;
     } 
   }
+  rfData++;
   if(rflen > 1 &&(*rfData)>=RF24_1MBPS && (*rfData)<= RF24_250KBPS)
   {
     if(gConfig.rfDataRate != (*rfData))
     {
-      gConfig.rfDataRate = (*rfData++);
+      gConfig.rfDataRate = (*rfData);
       gResetRF = TRUE;
     } 
   }
+  rfData++;
   if(rflen > 2 &&(*rfData)>=RF24_PA_MIN && (*rfData)<= RF24_PA_ERROR)
   {
     if(gConfig.rfPowerLevel != (*rfData))
     {
-      gConfig.rfPowerLevel = (*rfData++);
+      gConfig.rfPowerLevel = (*rfData);
       gResetRF = TRUE;
     } 
   }
+  rfData++;
   if(rflen > 8)
   {
-    if(!isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID)))
+    bool bValidNet = FALSE;
+    for(uint8_t i = 0;i<6;i++)
+    {
+      if(*(rfData+i) != 0)
+      {
+        bValidNet=TRUE;
+        break;
+      }
+    }
+    if(!isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID))&&bValidNet)
     {
       memcpy(gConfig.NetworkID,rfData,sizeof(gConfig.NetworkID));
       gResetRF = TRUE;
@@ -616,10 +628,10 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
   if(rflen > 9 && (* rfData) != 0)
     if(gConfig.nodeID != (* rfData))
     {
-      gConfig.nodeID = (* rfData++);
+      gConfig.nodeID = (* rfData);
       gResetNode=TRUE;
     }
-    
+  rfData++; 
   if(rflen > 10 && (* rfData) != 0)
   {
     if(gConfig.subID != (* rfData ))
