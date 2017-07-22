@@ -95,6 +95,7 @@ bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
           // Move to previous
           _keyNum--;
           _conkeyNum++;
+          _conkeyNum %= KEY_OP_MAX_CON_KEYS;
         } else {
           _conkeyNum = 0;
         }
