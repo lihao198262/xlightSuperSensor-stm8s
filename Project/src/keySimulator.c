@@ -91,14 +91,20 @@ bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
           if( ++j >= _len ) break;
         }
         
+        if( _isConkey && _keyNum > 0 ) {
+          // Move to previous
+          _keyNum--;
+          _conkeyNum++;
+        } else {
+          _conkeyNum = 0;
+        }
         gKeyBuf[i].keys[_keyNum].op = _keyString[j];
         if( ++j >= _len ) break;
         gKeyBuf[i].keys[_keyNum].keyID[_conkeyNum] = _keyString[j];
-        if( ++_conkeyNum < KEY_OP_MAX_CON_KEYS ) gKeyBuf[i].keys[_keyNum].keyID[_conkeyNum] = 0;
-        if( !_isConkey ) {
-          _conkeyNum = 0;
-          if( ++_keyNum >= KEY_OP_MAX_KEYS ) break;
+        if( _conkeyNum + 1 < KEY_OP_MAX_CON_KEYS ) {
+          gKeyBuf[i].keys[_keyNum].keyID[_conkeyNum + 1] = 0;
         }
+        if( ++_keyNum >= KEY_OP_MAX_KEYS ) break;
       }
       gKeyBuf[i].target = _target;
       gKeyBuf[i].ptr = 0;
