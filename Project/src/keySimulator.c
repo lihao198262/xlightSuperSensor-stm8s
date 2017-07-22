@@ -51,14 +51,18 @@ void keySimulator_init() {
   }
 }
 
-// Parse ketstring and put operation series into an available buffer
+// Parse keystring and put operation series into an available buffer
 bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
   u8 _keyNum = 0;
+  u8 _conkeyNum;
+  bool _isConkey;
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum == 0 ) {
       // Found available buffer
+      _conkeyNum = 0;
       for( u8 j = 0; j < _len; j++ ) {
         // Delay
+        _isConkey = FALSE;
         if( j == 0 ) gKeyBuf[i].keys[_keyNum].delay = 0;
         else {
           switch(_keyString[j]) {
@@ -79,6 +83,7 @@ bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
             break;
           case KEY_DELI_SAME_TIME:
             gKeyBuf[i].keys[_keyNum].delay = 0;
+            _isConkey = TRUE;
           default:
             gKeyBuf[i].keys[_keyNum].delay = 0;
             break;
@@ -88,8 +93,12 @@ bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
         
         gKeyBuf[i].keys[_keyNum].op = _keyString[j];
         if( ++j >= _len ) break;
-        gKeyBuf[i].keys[_keyNum].keyID = _keyString[j];
-        if( ++_keyNum >= KEY_OP_MAX_KEYS ) break;
+        gKeyBuf[i].keys[_keyNum].keyID[_conkeyNum] = _keyString[j];
+        if( ++_conkeyNum < KEY_OP_MAX_CON_KEYS ) gKeyBuf[i].keys[_keyNum].keyID[_conkeyNum] = 0;
+        if( !_isConkey ) {
+          _conkeyNum = 0;
+          if( ++_keyNum >= KEY_OP_MAX_KEYS ) break;
+        }
       }
       gKeyBuf[i].target = _target;
       gKeyBuf[i].ptr = 0;
@@ -105,63 +114,73 @@ bool ProduceKeyOperation(u8 _target, const char *_keyString, u8 _len) {
   return FALSE;
 }
 
-u8 SimulateKeyPress(u8 _target, u8 _op, u8 _key) {
+u8 SimulateKeyPress(u8 _target, u8 _op, u8 *_keys) {
   GPIO_TypeDef *_port;
   GPIO_Pin_TypeDef _pin;
   u8 _delay = 0;
-  if( LookupKeyPinMap(_target, _key, &_port, &_pin) ) {
-    switch(_op) {
-    case KEY_OP_STYLE_PRESS:
-      relay_gpio_write_bit(_port, _pin, TRUE);
-      _delay = 20;
-      break;
-    case KEY_OP_STYLE_FAST_PRESS:
-      relay_gpio_write_bit(_port, _pin, TRUE);
-      _delay = 10;
-      break;
-    case KEY_OP_STYLE_LONG_PRESS:
-      relay_gpio_write_bit(_port, _pin, TRUE);
-      _delay = 50;
-      break;
-    case KEY_OP_STYLE_VLONG_PRESS:
-      relay_gpio_write_bit(_port, _pin, TRUE);
-      _delay = 250;
-      break;
-    case KEY_OP_STYLE_HOLD:
-      relay_gpio_write_bit(_port, _pin, TRUE);
-      _delay = 0;
-      break;
-    case KEY_OP_STYLE_RELEASE:
-      relay_gpio_write_bit(_port, _pin, FALSE);
-      _delay = 0;
-      break;
-    case KEY_OP_STYLE_DBL_CLICK:
-      relay_gpio_write_bit(_port, _pin, TRUE);
-      _delay = 10;
-      break;
+  
+  for( u8 i = 0; i < KEY_OP_MAX_CON_KEYS; i++ ) {
+    if( _keys[i] == 0 ) break;
+    
+    if( LookupKeyPinMap(_target, _keys[i], &_port, &_pin) ) {
+      switch(_op) {
+      case KEY_OP_STYLE_PRESS:
+        relay_gpio_write_bit(_port, _pin, TRUE);
+        _delay = 20;
+        break;
+      case KEY_OP_STYLE_FAST_PRESS:
+        relay_gpio_write_bit(_port, _pin, TRUE);
+        _delay = 10;
+        break;
+      case KEY_OP_STYLE_LONG_PRESS:
+        relay_gpio_write_bit(_port, _pin, TRUE);
+        _delay = 50;
+        break;
+      case KEY_OP_STYLE_VLONG_PRESS:
+        relay_gpio_write_bit(_port, _pin, TRUE);
+        _delay = 250;
+        break;
+      case KEY_OP_STYLE_HOLD:
+        relay_gpio_write_bit(_port, _pin, TRUE);
+        _delay = 0;
+        break;
+      case KEY_OP_STYLE_RELEASE:
+        relay_gpio_write_bit(_port, _pin, FALSE);
+        _delay = 0;
+        break;
+      case KEY_OP_STYLE_DBL_CLICK:
+        relay_gpio_write_bit(_port, _pin, TRUE);
+        _delay = 10;
+        break;
+      }
     }
   }
   return _delay;
 }
 
-bool FinishKeyPress(u8 _target, u8 _op, u8 _key, u8 _step) {
+bool FinishKeyPress(u8 _target, u8 _op, u8 *_keys, u8 _step) {
   GPIO_TypeDef *_port;
   GPIO_Pin_TypeDef _pin;
   bool rc = TRUE;
-  if( LookupKeyPinMap(_target, _key, &_port, &_pin) ) {
-    switch(_op) {
-    case KEY_OP_STYLE_PRESS:
-    case KEY_OP_STYLE_FAST_PRESS:
-    case KEY_OP_STYLE_LONG_PRESS:
-    case KEY_OP_STYLE_VLONG_PRESS:
-      relay_gpio_write_bit(_port, _pin, FALSE);
-      break;
-    case KEY_OP_STYLE_DBL_CLICK:
-      if( _step < 4 ) { // 1 - on to off; 2 - off to on; 3 - on to off;
-        relay_gpio_write_bit(_port, _pin, _step % 2 == 0);
-        rc = FALSE;
+
+  for( u8 i = 0; i < KEY_OP_MAX_CON_KEYS; i++ ) {
+    if( _keys[i] == 0 ) break;
+    
+    if( LookupKeyPinMap(_target, _keys[i], &_port, &_pin) ) {
+      switch(_op) {
+      case KEY_OP_STYLE_PRESS:
+      case KEY_OP_STYLE_FAST_PRESS:
+      case KEY_OP_STYLE_LONG_PRESS:
+      case KEY_OP_STYLE_VLONG_PRESS:
+        relay_gpio_write_bit(_port, _pin, FALSE);
+        break;
+      case KEY_OP_STYLE_DBL_CLICK:
+        if( _step < 4 ) { // 1 - on to off; 2 - off to on; 3 - on to off;
+          relay_gpio_write_bit(_port, _pin, _step % 2 == 0);
+          rc = FALSE;
+        }
+        break;
       }
-      break;
     }
   }
   return rc;
