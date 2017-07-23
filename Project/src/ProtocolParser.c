@@ -630,18 +630,18 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
     }
   }
   rfData++; 
-  if(rflen > 10 && (* rfData) != 0)
+  if(rflen > 10)
   {
     if(gConfig.subID != (* rfData ))
     {
       gConfig.subID = (*rfData);
     }
   }
-  if(bValidNet && IsNodeidValid() && !isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID)))
-  {// nodeid is valid,allow change networkid
+  if(bValidNet && !isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID)))
+  {
     memcpy(gConfig.NetworkID,rfData,sizeof(gConfig.NetworkID));
     if(bNeedResetNode)
-      gResetRF = TRUE;
+      gResetNode = TRUE;
   }
 }
 //----------------------------------------------
