@@ -48,7 +48,7 @@
 #define KEY_DELI_NORMAL_PAUSE           '.'      // Normal pause, 600ms
 #define KEY_DELI_LONG_PAUSE             '='      // Long pause, 2s
 #define KEY_DELI_VLONG_PAUSE            '~'      // Very long pause, 5s
-#define KEY_DELI_SAME_TIME              '&'      // Press two keys at the same time
+#define KEY_DELI_SAME_TIME              '_'      // Press two keys at the same time
 
 // Panel Button Operation(bit:7,6,5), Object(bit:4,3,2) & Action(bit:1,0)
 #define BTN_OP_SHORT_PRESS              0       // Short press
