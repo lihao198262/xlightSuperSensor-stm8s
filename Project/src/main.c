@@ -75,6 +75,10 @@ Connections:
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 
+// Starting Flash block number of backup config
+#define BACKUP_CONFIG_BLOCK_NUM         2
+#define BACKUP_CONFIG_ADDRESS           (FLASH_DATA_START_PHYSICAL_ADDRESS + BACKUP_CONFIG_BLOCK_NUM * FLASH_BLOCK_SIZE)
+
 // RF channel for the sensor net, 0-127
 #define RF24_CHANNEL	   		71
 
@@ -106,7 +110,7 @@ Connections:
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 // For Gu'an Demo Classroom
-#define ONOFF_RESET_TIMES               300     // on / off times to reset device, regular value is 3
+#define ONOFF_RESET_TIMES               3     // on / off times to reset device, regular value is 3
 
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
@@ -127,6 +131,8 @@ MyMessage_t sndMsg, rcvMsg;
 uint8_t *psndMsg = (uint8_t *)&sndMsg;
 uint8_t *prcvMsg = (uint8_t *)&rcvMsg;
 bool gIsChanged = FALSE;
+bool gNeedSaveBackup = FALSE;
+bool gIsStatusChanged = FALSE;
 bool gResetRF = FALSE;
 bool gResetNode = FALSE;
 uint8_t _uniqueID[UNIQUE_ID_LEN];
@@ -202,12 +208,26 @@ void Flash_WriteBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
   FLASH_Unlock(FLASH_MEMTYPE_DATA);
   while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
   
+  // Write byte by byte
+  for( uint16_t i = 0; i < Length; i++ ) {
+    FLASH_ProgramByte(Address+i, Buffer[i]);
+    FLASH_WaitForLastOperation(FLASH_MEMTYPE_DATA);
+  }
+  FLASH_Lock(FLASH_MEMTYPE_DATA);
+}
+ 
+void Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length) {
+  // Init Flash Read & Write
+  FLASH_SetProgrammingTime(FLASH_PROGRAMTIME_STANDARD);
+  FLASH_Unlock(FLASH_MEMTYPE_DATA);
+  while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  
   uint8_t WriteBuf[FLASH_BLOCK_SIZE];
   uint16_t nBlockNum = (Length - 1) / FLASH_BLOCK_SIZE + 1;
-  for( uint16_t block = 0; block < nBlockNum; block++ ) {
+  for( uint16_t block = nStartBlock; block < nStartBlock + nBlockNum; block++ ) {
     memset(WriteBuf, 0x00, FLASH_BLOCK_SIZE);
     for( uint16_t i = 0; i < FLASH_BLOCK_SIZE; i++ ) {
-      WriteBuf[i] = Buffer[block * FLASH_BLOCK_SIZE + i];
+      WriteBuf[i] = Buffer[(block - nStartBlock) * FLASH_BLOCK_SIZE + i];
     }
     FLASH_ProgramBlock(block, FLASH_MEMTYPE_DATA, FLASH_PROGRAMMODE_STANDARD, WriteBuf);
     FLASH_WaitForLastOperation(FLASH_MEMTYPE_DATA);
@@ -240,12 +260,42 @@ bool isNodeIdRequired()
 }
 
 // Save config to Flash
+void SaveBackupConfig()
+{
+  if( gNeedSaveBackup ) {
+    // Overwrite entire config FLASH
+    Flash_WriteDataBlock(BACKUP_CONFIG_BLOCK_NUM, (uint8_t *)&gConfig, sizeof(gConfig));
+    gNeedSaveBackup = FALSE;
+  }
+}
+
+// Save status to Flash
+void SaveStatusData()
+{
+    // Skip the first byte (version)
+    uint8_t pData[50] = {0};
+    uint16_t nLen = (uint16_t)(&(gConfig.nodeID)) - (uint16_t)(&gConfig);
+    memcpy(pData, (uint8_t *)&gConfig, nLen);
+    Flash_WriteBuf(FLASH_DATA_START_PHYSICAL_ADDRESS + 1, pData + 1, nLen - 1);
+    gIsStatusChanged = FALSE;
+}
+
+// Save config to Flash
 void SaveConfig()
 {
   if( gIsChanged ) {
-    Flash_WriteBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
+    // Overwrite entire config FLASH
+    Flash_WriteDataBlock(0, (uint8_t *)&gConfig, sizeof(gConfig));
+    gIsStatusChanged = FALSE;
     gIsChanged = FALSE;
+    gNeedSaveBackup = TRUE;
+    return;
   }
+
+  if( gIsStatusChanged ) {
+    // Overwrite only Static & status parameters (the first part of config FLASH)
+    SaveStatusData();
+  }  
 }
 
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController
@@ -255,43 +305,62 @@ void InitNodeAddress() {
   memcpy(gConfig.NetworkID, RF24_BASE_RADIO_ID, ADDRESS_WIDTH);
 }
 
+bool IsConfigInvalid() {
+  return( gConfig.version > XLA_VERSION || gConfig.version < XLA_MIN_VER_REQUIREMENT 
+       || gConfig.nodeID == 0 || gConfig.type != XLA_PRODUCT_Type
+       || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.rfChannel > 127 || gConfig.rfDataRate > RF24_250KBPS );
+}
+
 // Load config from Flash
 void LoadConfig()
 {
-    // Load the most recent settings from FLASH
-    Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != XLA_PRODUCT_NODEID || gConfig.rfChannel > 127 || gConfig.rfDataRate > 2 ) {
-      memset(&gConfig, 0x00, sizeof(gConfig));
-      gConfig.version = XLA_VERSION;
-      InitNodeAddress();
-      gConfig.subID = 0;
-      gConfig.type = XLA_PRODUCT_Type;
-      gConfig.rptTimes = 1;
-      //sprintf(gConfig.Organization, "%s", XLA_ORGANIZATION);
-      //sprintf(gConfig.ProductName, "%s", XLA_PRODUCT_NAME);
-      gConfig.rfChannel = RF24_CHANNEL;
-      gConfig.rfPowerLevel = RF24_PA_MAX;
-      gConfig.rfDataRate = RF24_1MBPS;
+  // Load the most recent settings from FLASH
+  Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
+  //gConfig.version = XLA_VERSION + 1;
+  if( IsConfigInvalid() ) {
+      // If config is OK, then try to load config from backup area
+      Flash_ReadBuf(BACKUP_CONFIG_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
+      if( IsConfigInvalid() ) {
+        // If neither valid, then initialize config with default settings
+        memset(&gConfig, 0x00, sizeof(gConfig));
+        gConfig.version = XLA_VERSION;
+        InitNodeAddress();
+        gConfig.subID = 0;
+        gConfig.type = XLA_PRODUCT_Type;
+        gConfig.rptTimes = 1;
+        //sprintf(gConfig.Organization, "%s", XLA_ORGANIZATION);
+        //sprintf(gConfig.ProductName, "%s", XLA_PRODUCT_NAME);
+        gConfig.rfChannel = RF24_CHANNEL;
+        gConfig.rfPowerLevel = RF24_PA_MAX;
+        gConfig.rfDataRate = RF24_1MBPS;
 
 #ifdef EN_SENSOR_ALS
-      gConfig.senMap |= sensorALS;
+        gConfig.senMap |= sensorALS;
 #endif
 #ifdef EN_SENSOR_MIC
-      gConfig.senMap |= sensorMIC;
+        gConfig.senMap |= sensorMIC;
 #endif
 #ifdef EN_SENSOR_PIR
-      gConfig.senMap |= sensorPIR;
+        gConfig.senMap |= sensorPIR;
 #endif
 #ifdef EN_SENSOR_IRKEY
-      gConfig.senMap |= sensorIRKey;
+        gConfig.senMap |= sensorIRKey;
 #endif      
 #ifdef EN_SENSOR_DHT
-      gConfig.senMap |= sensorDHT;
+        gConfig.senMap |= sensorDHT;
 #endif
 #ifdef EN_SENSOR_PM25
-      gConfig.senMap |= sensorDUST;
+        gConfig.senMap |= sensorDUST;
 #endif
+      }
+      gConfig.swTimes = 0;
+      gIsChanged = TRUE;
+    } else {
+      uint8_t bytVersion;
+      Flash_ReadBuf(BACKUP_CONFIG_ADDRESS, (uint8_t *)&bytVersion, sizeof(bytVersion));
+      if( bytVersion != gConfig.version ) gNeedSaveBackup = TRUE;
     }
+  
     // Start ZenSensor
     gConfig.state = 1;
     
@@ -434,6 +503,7 @@ bool SendMyMessage() {
 void GotNodeID() {
   mGotNodeID = TRUE;
   UpdateNodeAddress(NODEID_GATEWAY);
+  //gIsChanged = TRUE;
   SaveConfig();
 }
 

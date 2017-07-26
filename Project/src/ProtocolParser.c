@@ -207,7 +207,7 @@ uint8_t ParseProtocol(){
         gConfig.token = rcvMsg.payload.uiValue;
         gConfig.present = (gConfig.token >  0);
         GotPresented();
-        gIsChanged = TRUE;
+        gIsStatusChanged = TRUE;
       }
     }
     break;
@@ -233,7 +233,7 @@ uint8_t ParseProtocol(){
         // set zensensor on/off
         _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
         gConfig.state = _OnOff;
-        gIsChanged = TRUE;
+        gIsStatusChanged = TRUE;
         if( _needAck ) {
           Msg_DevOnOff(_sender);
           return 1;
@@ -580,6 +580,7 @@ void Process_SetDevConfig(u8 _len) {
 //////set rf /////////////////////////////////////////////////
 void Process_SetupRF(const UC *rfData,uint8_t rflen)
 {
+  bool bNeedChangeCfg = FALSE;
   if(rflen > 0 &&(*rfData)>=0 && (*rfData)<=127)
   {
     if(gConfig.rfChannel != (*rfData))
@@ -608,6 +609,7 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
   }
   rfData++;
   bool bValidNet = FALSE;
+  bool newNetwork[6] = {0};
   if(rflen > 8)
   {  
     for(uint8_t i = 0;i<6;i++)
@@ -617,6 +619,14 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
         bValidNet=TRUE;
         break;
       }
+    }
+    if(isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID)))
+    {
+      bValidNet=FALSE;
+    }
+    else
+    {
+      memcpy(newNetwork,rfData,sizeof(newNetwork));
     }
   }
   rfData = rfData + sizeof(gConfig.NetworkID);
@@ -635,13 +645,18 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
     if(gConfig.subID != (* rfData ))
     {
       gConfig.subID = (*rfData);
+      bNeedChangeCfg = TRUE;
     }
   }
-  if(bValidNet && !isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID)))
-  {
-    memcpy(gConfig.NetworkID,rfData,sizeof(gConfig.NetworkID));
+  if(bValidNet)
+  {// nodeid is valid,allow change networkid
+    memcpy(gConfig.NetworkID,newNetwork,sizeof(gConfig.NetworkID));
     if(bNeedResetNode)
       gResetNode = TRUE;
+  }
+  if(gResetNode || gResetRF || bNeedChangeCfg)
+  {
+    gIsChanged = TRUE;
   }
 }
 //----------------------------------------------
