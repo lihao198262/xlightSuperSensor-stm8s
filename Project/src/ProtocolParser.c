@@ -245,7 +245,7 @@ uint8_t ParseProtocol(){
             SendMyMessage();
           }
         }
-      } else if( IS_TARGET_CURTAIN(_type) ) {
+      } else if( IS_TARGET_CURTAIN(gConfig.type) &&  IS_TARGET_CURTAIN(_type) ) {
         // General Key Control
         /// Get SubID
         targetSubID = _type & 0x0F;
@@ -254,7 +254,17 @@ uint8_t ParseProtocol(){
           Msg_Relay_Ack(_sender, _type, _OnOff);
           return 1;
         }
-      } else if( IS_TARGET_AIRCONDITION(_type) ) {
+      }else if( IS_TARGET_AIRPURIFIER(gConfig.type) &&  IS_TARGET_AIRPURIFIER(_type) ) {
+        // General Key Control
+        /// Get SubID
+        targetSubID = _type & 0x0F;
+        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        if( _needAck ) {
+          Msg_Relay_Ack(_sender, _type, _OnOff);
+          return 1;
+        }
+      }
+      else if( IS_TARGET_AIRCONDITION(_type) ) {
         // ToDo: air conditioner control code goes here
         if( _lenPayl >= 14 ) {
           Set_AC_Buf(rcvMsg.payload.data, 14);

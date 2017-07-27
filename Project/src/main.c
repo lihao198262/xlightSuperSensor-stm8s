@@ -71,7 +71,7 @@ Connections:
 #define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
 #else
 #define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
+#define XLA_PRODUCT_Type          ZEN_TARGET_SPOTLIGHT
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 
@@ -364,19 +364,31 @@ void LoadConfig()
     // Start ZenSensor
     gConfig.state = 1;
     
-    // Notes: only for Airpuritifier
-    //gConfig.subID = 2;
-    // Notes: only for potlight
-    //gConfig.subID = 4;
-    // Notes: only for AC
-    //gConfig.subID = 1;
-    
     // Engineering code
-    gConfig.senMap |= sensorALS;
-    gConfig.senMap |= sensorMIC;
-    gConfig.senMap |= sensorDHT;
-    gConfig.senMap |= sensorDUST;
-    gConfig.senMap |= sensorIRKey;
+    if(XLA_PRODUCT_Type == ZEN_TARGET_SUPERSENSOR)
+    {
+      gConfig.senMap |= sensorALS;
+      gConfig.senMap |= sensorMIC;
+      gConfig.senMap |= sensorDHT;
+      gConfig.senMap |= sensorDUST;
+      gConfig.senMap |= sensorIRKey;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_SPOTLIGHT)
+    {
+      gConfig.subID = 4;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_AIRCONDITION)
+    {
+      gConfig.subID = 1;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_AIRPURIFIER)
+    {
+      gConfig.subID = 2;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_CURTAIN)
+    {
+      gConfig.subID = 8;
+    }
     
 #ifdef EN_PANEL_BUTTONS
     if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
