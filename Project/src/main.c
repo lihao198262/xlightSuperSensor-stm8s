@@ -110,7 +110,7 @@ Connections:
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 // For Gu'an Demo Classroom
-#define ONOFF_RESET_TIMES               3     // on / off times to reset device, regular value is 3
+#define ONOFF_RESET_TIMES               10     // on / off times to reset device, regular value is 3
 
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
@@ -650,14 +650,15 @@ int main( void ) {
     gConfig.swTimes = 0;
     InitNodeAddress();
   }
-  gIsChanged = TRUE;
-  SaveConfig();
   
   // Init Watchdog
   wwdg_init();
   
   relay_key_init();
   keySimulator_init();
+  
+  gIsChanged = TRUE;
+  SaveConfig();
   
   // Init sensors
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
@@ -910,6 +911,9 @@ void tmrProcess() {
   if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
 #endif  
+  
+    // Save config into backup area
+   SaveBackupConfig();
   
 }
 

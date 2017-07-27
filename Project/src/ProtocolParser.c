@@ -649,11 +649,12 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
     }
   }
   if(bValidNet)
-  {// nodeid is valid,allow change networkid
+  {
     memcpy(gConfig.NetworkID,newNetwork,sizeof(gConfig.NetworkID));
-    if(bNeedResetNode)
-      gResetNode = TRUE;
+    bNeedResetNode = TRUE;
   }
+  if(bNeedResetNode)
+    gResetNode = TRUE;
   if(gResetNode || gResetRF || bNeedChangeCfg)
   {
     gIsChanged = TRUE;
