@@ -207,7 +207,7 @@ uint8_t ParseProtocol(){
         gConfig.token = rcvMsg.payload.uiValue;
         gConfig.present = (gConfig.token >  0);
         GotPresented();
-        gIsChanged = TRUE;
+        gIsStatusChanged = TRUE;
       }
     }
     break;
@@ -233,7 +233,7 @@ uint8_t ParseProtocol(){
         // set zensensor on/off
         _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
         gConfig.state = _OnOff;
-        gIsChanged = TRUE;
+        gIsStatusChanged = TRUE;
         if( _needAck ) {
           Msg_DevOnOff(_sender);
           return 1;
@@ -245,7 +245,7 @@ uint8_t ParseProtocol(){
             SendMyMessage();
           }
         }
-      } else if( IS_TARGET_CURTAIN(_type) ) {
+      } else if( IS_TARGET_CURTAIN(gConfig.type) &&  IS_TARGET_CURTAIN(_type) ) {
         // General Key Control
         /// Get SubID
         targetSubID = _type & 0x0F;
@@ -254,7 +254,17 @@ uint8_t ParseProtocol(){
           Msg_Relay_Ack(_sender, _type, _OnOff);
           return 1;
         }
-      } else if( IS_TARGET_AIRCONDITION(_type) ) {
+      }else if( IS_TARGET_AIRPURIFIER(gConfig.type) &&  IS_TARGET_AIRPURIFIER(_type) ) {
+        // General Key Control
+        /// Get SubID
+        targetSubID = _type & 0x0F;
+        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        if( _needAck ) {
+          Msg_Relay_Ack(_sender, _type, _OnOff);
+          return 1;
+        }
+      }
+      else if( IS_TARGET_AIRCONDITION(_type) ) {
         // ToDo: air conditioner control code goes here
         if( _lenPayl >= 14 ) {
           Set_AC_Buf(rcvMsg.payload.data, 14);
@@ -580,6 +590,7 @@ void Process_SetDevConfig(u8 _len) {
 //////set rf /////////////////////////////////////////////////
 void Process_SetupRF(const UC *rfData,uint8_t rflen)
 {
+  bool bNeedChangeCfg = FALSE;
   if(rflen > 0 &&(*rfData)>=0 && (*rfData)<=127)
   {
     if(gConfig.rfChannel != (*rfData))
@@ -607,9 +618,10 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
     } 
   }
   rfData++;
+  bool bValidNet = FALSE;
+  bool newNetwork[6] = {0};
   if(rflen > 8)
-  {
-    bool bValidNet = FALSE;
+  {  
     for(uint8_t i = 0;i<6;i++)
     {
       if(*(rfData+i) != 0)
@@ -618,26 +630,44 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
         break;
       }
     }
-    if(!isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID))&&bValidNet)
+    if(isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID)))
     {
-      memcpy(gConfig.NetworkID,rfData,sizeof(gConfig.NetworkID));
-      gResetRF = TRUE;
+      bValidNet=FALSE;
+    }
+    else
+    {
+      memcpy(newNetwork,rfData,sizeof(newNetwork));
     }
   }
   rfData = rfData + sizeof(gConfig.NetworkID);
+  bool bNeedResetNode = FALSE;
   if(rflen > 9 && (* rfData) != 0)
+  {
     if(gConfig.nodeID != (* rfData))
     {
       gConfig.nodeID = (* rfData);
-      gResetNode=TRUE;
+      bNeedResetNode = TRUE;
     }
+  }
   rfData++; 
-  if(rflen > 10 && (* rfData) != 0)
+  if(rflen > 10)
   {
     if(gConfig.subID != (* rfData ))
     {
       gConfig.subID = (*rfData);
+      bNeedChangeCfg = TRUE;
     }
+  }
+  if(bValidNet)
+  {
+    memcpy(gConfig.NetworkID,newNetwork,sizeof(gConfig.NetworkID));
+    bNeedResetNode = TRUE;
+  }
+  if(bNeedResetNode)
+    gResetNode = TRUE;
+  if(gResetNode || gResetRF || bNeedChangeCfg)
+  {
+    gIsChanged = TRUE;
   }
 }
 //----------------------------------------------
