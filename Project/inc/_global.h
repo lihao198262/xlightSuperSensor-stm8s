@@ -112,8 +112,8 @@ typedef struct
   UC version                  :8;           // Data version, other than 0xFF
   UC present                  :1;           // 0 - not present; 1 - present
   UC state                    :1;           // SuperSensor On/Off
-  UC swTimes                  :3;           // On/Off times
-  UC reserved0                :3;
+  UC swTimes                  :4;           // On/Off times
+  UC reserved0                :2;
   UC relay_key_value          :8;           // Relay Key Bitmap
 
   // Configurable parameters
