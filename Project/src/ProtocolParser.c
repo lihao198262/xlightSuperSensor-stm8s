@@ -264,12 +264,13 @@ uint8_t ParseProtocol(){
           return 1;
         }
       }
-      else if( IS_TARGET_AIRCONDITION(_type) ) {
+      else if(IS_TARGET_AIRCONDITION(gConfig.type) && IS_TARGET_AIRCONDITION(_type) ) {
         // ToDo: air conditioner control code goes here
         if( _lenPayl >= 14 ) {
           Set_AC_Buf(rcvMsg.payload.data, 14);
         }
-      } else if( IS_TARGET_AIRPURIFIER(_type) ) {
+      } 
+      /*else if( IS_TARGET_AIRPURIFIER(_type) ) {
         // Parsing payload
         unsigned long buf[2];
         switch(rcvMsg.payload.data[1]) {
@@ -305,7 +306,7 @@ uint8_t ParseProtocol(){
           break;
         }
         Set_Send_Buf(buf, 1);
-      }
+      }*/
     }
     break;
   }

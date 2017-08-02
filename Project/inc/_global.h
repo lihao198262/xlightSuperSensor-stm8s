@@ -8,13 +8,13 @@
 
 /* Exported types ------------------------------------------------------------*/
 /// Comment off line to disable panel buttons
-#define EN_PANEL_BUTTONS
+//#define EN_PANEL_BUTTONS
 /// Comment off line to disable Relay key input
 //#define EN_SENSOR_IRKEY
 // Notes: EN_PANEL_BUTTONS & EN_SENSOR_IRKEY can't exist at the same time
-#ifdef EN_PANEL_BUTTONS
-#undef EN_SENSOR_IRKEY
-#endif
+//#ifdef EN_PANEL_BUTTONS
+//#undef EN_SENSOR_IRKEY
+//#endif
 
 // Include Sensors
 /// Comment off line to disable sensor

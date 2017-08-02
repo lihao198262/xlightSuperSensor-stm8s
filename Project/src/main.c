@@ -71,7 +71,7 @@ Connections:
 #define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
 #else
 #define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          ZEN_TARGET_SPOTLIGHT
+#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 
@@ -110,7 +110,7 @@ Connections:
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 // For Gu'an Demo Classroom
-#define ONOFF_RESET_TIMES               10     // on / off times to reset device, regular value is 3
+#define ONOFF_RESET_TIMES               5     // on / off times to reset device, regular value is 3
 
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
@@ -367,7 +367,7 @@ void LoadConfig()
         gConfig.senMap |= sensorDUST;
 #endif
       }
-      gConfig.swTimes = 0;
+      //gConfig.swTimes = 0;
       gIsChanged = TRUE;
     } else {
       uint8_t bytVersion;
