@@ -25,11 +25,11 @@
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
-#ifdef ZENREMOTE
-#undef EN_SENSOR_DHT
-#else
-#define EN_SENSOR_DHT
-#endif
+//#ifdef ZENREMOTE
+//#undef EN_SENSOR_DHT
+//#else
+//#define EN_SENSOR_DHT
+//#endif
 
 // Common Data Type
 #define UC                        uint8_t
@@ -170,6 +170,7 @@ extern bool gResetRF;
 extern bool gResetNode;
 extern uint8_t _uniqueID[UNIQUE_ID_LEN];
 
+void printlog(uint8_t *pBuf);
 bool isIdentityEqual(const UC *pId1, const UC *pId2, UC nLen);
 void GotNodeID();
 void GotPresented();

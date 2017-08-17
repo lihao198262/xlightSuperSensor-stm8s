@@ -266,8 +266,18 @@ uint8_t ParseProtocol(){
       }
       else if(IS_TARGET_AIRCONDITION(gConfig.type) && IS_TARGET_AIRCONDITION(_type) ) {
         // ToDo: air conditioner control code goes here
-        if( _lenPayl >= 14 ) {
-          Set_AC_Buf(rcvMsg.payload.data, 14);
+        if(_type == HAIER_CON)
+        {
+          // haier
+          if( _lenPayl >= 14 ) {
+            Set_AC_Buf(rcvMsg.payload.data, 14);
+          }
+        }
+        else if(_type == MEDIA_CON)
+        {
+           if( _lenPayl >= 3 ) {
+            Set_AC_Media_Buf(rcvMsg.payload.data, 3);
+          }
         }
       } 
       /*else if( IS_TARGET_AIRPURIFIER(_type) ) {

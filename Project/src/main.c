@@ -114,7 +114,9 @@ Connections:
 
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
-  
+
+#define DEBUG_LOG
+
 // Unique ID
 #if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
   #define     UNIQUE_ID_ADDRESS         (0x48CD)
@@ -172,6 +174,13 @@ uint8_t m_cntRFSendFailed = 0;
    uint16_t dht_tem_tick = 0;
    uint16_t dht_collect_tick = 0;
 #endif
+ 
+void printlog(uint8_t *pBuf)
+{
+#ifdef DEBUG_LOG
+  Uart2SendString(pBuf);
+#endif
+}
 
 // Initialize Window Watchdog
 void wwdg_init() {
@@ -489,6 +498,7 @@ bool SendMyMessage() {
             // Cold Reset
             WWDG->CR = 0x80;
             m_cntRFReset = 0;
+            printlog("cold reset\r\n");
             break;
           } else if( m_cntRFReset >= 2 ) {
             // Reset whole node
@@ -704,7 +714,14 @@ int main( void ) {
   // Init ADC
   ADC1_Config();
 #endif 
-
+  
+#ifdef DEBUG_LOG
+#ifndef EN_SENSOR_PM25
+  // Init serial ports
+  uart2_config(9600);
+#endif
+#endif
+  printlog("start...\r\n");
   // Init timer
   TIM4_10ms_handler = tmrProcess;
   Time4_Init();

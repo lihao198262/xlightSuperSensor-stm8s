@@ -15,6 +15,12 @@ u8 ac_buf_read_ptr = 0;
 u8 ac_buf_write_ptr = 0;
 u8 ac_buf_len = 0;
 
+#define BUFFER_MEDIA_AC_LEN 3
+uint8_t air_condition_media_buf[BUFFER_MEDIA_AC_LEN];
+u8 ac_media_buf_read_ptr = 0;
+u8 ac_media_buf_write_ptr = 0;
+u8 ac_media_buf_len = 0;
+
 /*******************************************************************************
  * 名称: TIM1_PWM_Init
  * 功能: TIM1初始化函数 用作PWM输出 38khz
@@ -196,6 +202,192 @@ void Haier_Infrared_Send(uint8_t data[], int len)
   Infrared_Send_Status(FALSE);
 }
 
+
+#define MEDIA_HDR_MARK          Infrared_Send_Status(TRUE);     Delay_50Us(88);
+#define MEDIA_HDR_SPACE         Infrared_Send_Status(FALSE);    Delay_50Us(88);
+#define MEDIA_BIT_MARK          Infrared_Send_Status(TRUE);     Delay_50Us(11);
+#define MEDIA_ONE_SPACE         Infrared_Send_Status(FALSE);    Delay_50Us(32);
+#define MEDIA_ZERO_SPACE	Infrared_Send_Status(FALSE);    Delay_50Us(11);
+
+/*******************************************************************************
+ * 名称: Media_Infrared_Send
+ * 功能: 红外发射
+ * 形参:  uint8_t base	 地址码
+ *        uint8_t high	高位字节
+ *        uint8_t low	低位字节
+ * 返回: 无
+ * 说明: 无 
+ ******************************************************************************/
+void Media_Infrared_Send(uint8_t base, uint8_t high, uint8_t low)
+{
+
+  MEDIA_HDR_MARK
+  MEDIA_HDR_SPACE
+  
+  uint8_t temp = base;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ONE_SPACE;
+    }
+    else {
+      MEDIA_ZERO_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = base;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ZERO_SPACE;
+    }
+    else {
+      MEDIA_ONE_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = high;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ONE_SPACE;
+    }
+    else {
+      MEDIA_ZERO_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = high;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ZERO_SPACE;
+    }
+    else {
+      MEDIA_ONE_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = low;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ONE_SPACE;
+    }
+    else {
+      MEDIA_ZERO_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = low;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ZERO_SPACE;
+    }
+    else {
+      MEDIA_ONE_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  MEDIA_BIT_MARK;
+  MEDIA_HDR_SPACE;
+  MEDIA_HDR_MARK;
+  MEDIA_HDR_SPACE;
+  
+  temp = base;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ONE_SPACE;
+    }
+    else {
+      MEDIA_ZERO_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = base;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ZERO_SPACE;
+    }
+    else {
+      MEDIA_ONE_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = high;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ONE_SPACE;
+    }
+    else {
+      MEDIA_ZERO_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = high;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ZERO_SPACE;
+    }
+    else {
+      MEDIA_ONE_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = low;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ONE_SPACE;
+    }
+    else {
+      MEDIA_ZERO_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  
+  temp = low;
+  for(int i=0;i<8;i++) {
+    MEDIA_BIT_MARK;
+    if(temp & 0x80) {
+      MEDIA_ZERO_SPACE;
+    }
+    else {
+      MEDIA_ONE_SPACE;
+    }
+    
+    temp <<= 1;
+  }
+  MEDIA_BIT_MARK;
+  Infrared_Send_Status(FALSE);
+}
+
 /*******************************************************************************
  * 名称: Infrared_Init()
  * 功能: 初始化函数
@@ -246,6 +438,18 @@ bool Set_AC_Buf(uint8_t *buf, u8 len)
   return TRUE;
 }
 
+bool Set_AC_Media_Buf(uint8_t *buf, u8 len)
+{
+  if( ac_media_buf_len + len > BUFFER_MEDIA_AC_LEN ) return FALSE;
+  
+  for( u8 i=0; i<len; i++ ) {
+    air_condition_media_buf[ac_media_buf_write_ptr++] = buf[i];
+    ac_media_buf_write_ptr %= BUFFER_MEDIA_AC_LEN;
+  }
+  ac_media_buf_len += len;
+  return TRUE;
+}
+
 void IR_Send()
 {
   // Send one element each time
@@ -265,5 +469,13 @@ void IR_Send()
     ac_buf_write_ptr = 0;
     ac_buf_read_ptr = 0;
     ac_buf_len = 0;
+  }
+  
+    // Send all data at a time
+  if( ac_media_buf_len > 0 ) {
+    Media_Infrared_Send(air_condition_media_buf[0],air_condition_media_buf[1],air_condition_media_buf[2]);
+    ac_media_buf_write_ptr = 0;
+    ac_media_buf_read_ptr = 0;
+    ac_media_buf_len = 0;
   }
 }
