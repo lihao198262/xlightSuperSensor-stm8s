@@ -324,6 +324,24 @@ void LoopOne(uint8_t relay_key_map,uint8_t lv_act,uint8_t index)
   }
 }
 
+// Send spotlight log
+void SpotlightStatusLog(uint8_t _st,uint8_t _relaykey) { 
+  char pBuf[20];
+  memset(pBuf, 0x00, 20);
+  pBuf[0] = 's';
+  pBuf[1] = ' ';
+  pBuf[2] = _st + '0';
+  pBuf[3] = _relaykey;
+  printlog((uint8_t *)pBuf);
+}
+
+void SerialSendLog(const char *pText,uint8_t len) {
+  char pBuf[20];
+  memset(pBuf, 0x00, 20);
+  memcpy(pBuf,pText,len);
+  printlog((uint8_t *)pBuf);
+}
+
 // Button Actions
 void Button_Action(uint8_t _op, uint8_t _btn) {
 #ifdef EN_PANEL_BUTTONS  
@@ -385,8 +403,14 @@ void Button_Action(uint8_t _op, uint8_t _btn) {
         // Act on corresponding relay key
         lv_key = _btn + '1';
         lv_onoff = (lv_act == BTN_ACT_TOGGLE ? !relay_get_key(lv_key) : BTN_ACT_ON == lv_act);
+        SpotlightStatusLog(lv_onoff,lv_key);
         if( relay_set_key(lv_key, lv_onoff) ) {
+          printlog("-ok\r\n");
           Msg_Relay_Ack(NODEID_GATEWAY, lv_onoff ? V_RELAY_ON : V_RELAY_OFF, lv_key);
+        }
+        else
+        {
+          printlog("-fail\r\n");
         }
         break;
       }
@@ -408,6 +432,7 @@ void btn_short_button_press(uint8_t _btn)
   case keylstCenter:
   case keylstUp:
   case keylstDown:
+    printlog("push");
     Button_Action(BTN_OP_SHORT_PRESS, _btn);
     break;
     
