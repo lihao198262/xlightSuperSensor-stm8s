@@ -161,7 +161,7 @@ bool relay_set_key(u8 _key, bool _on)
     break;
   }
   
-  if( rc ) gIsChanged = TRUE;
+  if( rc ) gIsStatusChanged = TRUE;
   
   return rc;
 }

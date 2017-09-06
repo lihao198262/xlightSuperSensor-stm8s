@@ -84,7 +84,7 @@ Connections:
 
 // Window Watchdog
 // Uncomment this line if in debug mode
-#define DEBUG_NO_WWDG
+//#define DEBUG_NO_WWDG
 #define WWDG_COUNTER                    0x7f
 #define WWDG_WINDOW                     0x77
 
@@ -496,9 +496,9 @@ bool SendMyMessage() {
           m_cntRFReset++;
           if( m_cntRFReset >= 3 ) {
             // Cold Reset
-            WWDG->CR = 0x80;
+            //WWDG->CR = 0x80;
             m_cntRFReset = 0;
-            printlog("cold reset\r\n");
+            //printlog("cold reset\r\n");
             break;
           } else if( m_cntRFReset >= 2 ) {
             // Reset whole node
@@ -690,9 +690,6 @@ int main( void ) {
   // Init Watchdog
   wwdg_init();
   
-  relay_key_init();
-  keySimulator_init();
-  
   gIsChanged = TRUE;
   SaveConfig();
   
@@ -735,7 +732,8 @@ int main( void ) {
 #ifdef EN_PANEL_BUTTONS
   button_init();
 #endif  
-  
+  keySimulator_init();
+  relay_key_init(); 
   while(1) {
     // Go on only if NRF chip is presented
     disableInterrupts();
