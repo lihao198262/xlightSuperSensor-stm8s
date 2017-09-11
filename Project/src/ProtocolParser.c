@@ -79,7 +79,7 @@ void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _typ
 }
 
 uint8_t ParseProtocol(){
-  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && rcvMsg.header.sender == NODEID_RF_SCANNER) ) return 0;
+  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 )) ) return 0;
   
   uint8_t _cmd = miGetCommand();
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
@@ -229,16 +229,88 @@ uint8_t ParseProtocol(){
     
   case C_SET:
     if( IS_MINE_SUBID(_sensor) && !_isAck ) {
-      if( _type == V_STATUS && gConfig.nodeID == NODEID_SUPERSENSOR ) {
-        // set zensensor on/off
-        _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
-        gConfig.state = _OnOff;
-        gIsStatusChanged = TRUE;
-        if( _needAck ) {
-          Msg_DevOnOff(_sender);
-          return 1;
+      if( _type == V_STATUS) {
+        if(gConfig.nodeID == NODEID_SUPERSENSOR)
+        {
+          // set zensensor on/off
+          _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
+          gConfig.state = _OnOff;
+          gIsStatusChanged = TRUE;
+          if( _needAck ) {
+            Msg_DevOnOff(_sender);
+            return 1;
+          }
         }
-      } else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
+        else
+        {
+          if( IS_TARGET_CURTAIN(gConfig.type)) {
+            // General Key Control
+            if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
+            {
+              targetSubID = gConfig.type & 0x0F;
+              _OnOff = ProduceKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
+            }
+            else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
+            {
+              targetSubID = gConfig.type & 0x0F;
+              _OnOff = ProduceKeyOperation(targetSubID, CURTAIN_ON, CURTAIN_SW_LEN);
+            }
+            if( _needAck ) {
+              Msg_Relay_Ack(_sender, gConfig.type, _OnOff);
+              return 1;
+            }
+
+          }else if( IS_TARGET_AIRPURIFIER(gConfig.type) ) {
+            // General Key Control
+            /// Get SubID
+            // todo
+            if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
+            {
+              for( u8 key = '1'; key <= '3'; key++ ) {
+                relay_set_key(key, DEVICE_SW_OFF);
+              } 
+              Msg_Relay_Ack(_sender, gConfig.type, DEVICE_SW_OFF);
+              return 1;
+            }
+            else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
+            {
+              if( relay_set_key('1', DEVICE_SW_ON) ) {
+                Msg_Relay_Ack(_sender, gConfig.type, DEVICE_SW_ON);
+                return 1;
+              }
+            }
+          }
+          else if(IS_TARGET_AIRCONDITION(gConfig.type) )
+          {
+            if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
+            {
+#if defined AIRCON_MEDIA
+            Set_AC_Media_Buf(mediaoff, 3);
+#elif defined AIRCON_HAIER
+            char haieroffbuf[14] = {0};
+            Set_AC_Buf(haieroffbuf, 14);
+#endif
+            }
+            else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
+            { // todo
+#if defined AIRCON_MEDIA
+            Set_AC_Media_Buf(media_last_on_status, 3);
+#elif defined AIRCON_HAIER
+            Set_AC_Buf(haier_last_on_status, 14);
+#endif
+            }
+
+          }
+          else if(IS_TARGET_SPOTLIGHT(gConfig.type) )
+          {
+            if( relay_set_key('1', rcvMsg.payload.bValue == DEVICE_SW_ON) ) {
+              Msg_Relay_Ack(_sender, gConfig.type, rcvMsg.payload.bValue == DEVICE_SW_ON);
+              return 1;
+            }
+          }
+        }
+      }
+      else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
         for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
           if( relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON) ) {
             Msg_Relay_Ack(_sender, _type, rcvMsg.payload.data[idx]);
