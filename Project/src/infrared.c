@@ -40,7 +40,7 @@ char haier_last_on_status[15] = {0};
 void TIM1_PWM_Init(void)
 { 
   TIM1_DeInit();
-  TIM1_TimeBaseInit(1-1, TIM1_COUNTERMODE_UP, 421, 0x00);       //  2kHz  (8000*1)/16000000
+  TIM1_TimeBaseInit(1-1, TIM1_COUNTERMODE_UP, 421, 0x00);       // 38khz 16000/38 = 421 
   
 #ifdef CHANNEL1
   TIM1_OC1Init(TIM1_OCMODE_PWM2, TIM1_OUTPUTSTATE_ENABLE, TIM1_OUTPUTNSTATE_DISABLE,

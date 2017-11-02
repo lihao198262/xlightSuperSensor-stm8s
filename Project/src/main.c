@@ -64,6 +64,17 @@ Connections:
 
 */
 
+void testio()
+{
+  GPIO_Init(GPIOB , GPIO_PIN_5 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_4 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_3 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_2 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_1 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOD , GPIO_PIN_1 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOD , GPIO_PIN_7 , GPIO_MODE_OUT_PP_LOW_SLOW);
+}
+
 // Choose Product Name & Type
 #ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
@@ -84,7 +95,7 @@ Connections:
 
 // Window Watchdog
 // Uncomment this line if in debug mode
-//#define DEBUG_NO_WWDG
+#define DEBUG_NO_WWDG
 #define WWDG_COUNTER                    0x7f
 #define WWDG_WINDOW                     0x77
 
@@ -115,7 +126,7 @@ Connections:
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
 
-#define DEBUG_LOG
+//#define DEBUG_LOG
 
 // Unique ID
 #if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
@@ -481,9 +492,10 @@ bool SendMyMessage() {
     while (lv_tried++ <= gConfig.rptTimes ) {
       
       mutex = 0;
-      RF24L01_set_mode_TX();
-      RF24L01_write_payload(psndMsg, PLOAD_WIDTH);
-
+      if(RF24L01_set_mode_TX_timeout() == -1) 
+        break;
+      if(RF24L01_write_payload_timeout(psndMsg, PLOAD_WIDTH) == -1) 
+        break;
       WaitMutex(0x1FFFF);
       if (mutex == 1) {
         m_cntRFSendFailed = 0;
@@ -734,6 +746,7 @@ int main( void ) {
 #endif  
   keySimulator_init();
   relay_key_init(); 
+   testio();
   while(1) {
     // Go on only if NRF chip is presented
     disableInterrupts();
@@ -747,7 +760,7 @@ int main( void ) {
       }
       feed_wwdg();
     }
-    
+    printlog("check end...\r\n");
     // IRQ
     NRF2401_EnableIRQ();
     // Must establish connection firstly
@@ -899,8 +912,9 @@ int main( void ) {
       ResetRFModule();
       ////////////rfscanner process/////////////////////////////// 
       // Send message if ready
+      PB4_High;
       SendMyMessage();
-      
+      PB4_Low;
       // Save Config if Changed
       SaveConfig();
       
@@ -959,11 +973,13 @@ void tmrProcess() {
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
+	PD7_High;
   if(RF24L01_is_data_available()) {
     //Packet was received
     RF24L01_clear_interrupts();
     RF24L01_read_payload(prcvMsg, PLOAD_WIDTH);
     bMsgReady = ParseProtocol();
+	PD7_Low;
     return;
   }
  
@@ -972,8 +988,10 @@ INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
     //Packet was sent or max retries reached
     RF24L01_clear_interrupts();
     mutex = sent_info;
+    PD7_Low;
     return;
   }
 
    RF24L01_clear_interrupts();
+   PD7_Low;
 }

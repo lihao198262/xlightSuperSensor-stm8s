@@ -351,6 +351,13 @@ uint8_t ParseProtocol(){
             Set_AC_Media_Buf(rcvMsg.payload.data, 3);
           }
         }
+        else
+        {
+          // default haier
+          if( _lenPayl >= 14 ) {
+            Set_AC_Buf(rcvMsg.payload.data, 14);
+          }
+        }
       } 
       /*else if( IS_TARGET_AIRPURIFIER(_type) ) {
         // Parsing payload
