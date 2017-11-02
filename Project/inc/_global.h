@@ -185,6 +185,8 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define IS_TARGET_SPOTLIGHT(nTag)       (((nTag) & 0xF0) == ZEN_TARGET_SPOTLIGHT)
 #define IS_TARGET_SUPERSENSOR(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_SUPERSENSOR)
 
+//#define TEST
+#ifdef TEST
 #define     PB5_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_5)
 #define     PB4_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_4)
 #define     PB3_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_3)
@@ -201,5 +203,6 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define     PD1_High                GPIO_WriteHigh(GPIOD , GPIO_PIN_1)
 #define     PD2_High                GPIO_WriteHigh(GPIOD , GPIO_PIN_2)
 #define     PD7_High                GPIO_WriteHigh(GPIOD , GPIO_PIN_7)
+#endif
 
 #endif /* __GLOBAL_H */

@@ -64,6 +64,7 @@ Connections:
 
 */
 
+#ifdef TEST
 void testio()
 {
   GPIO_Init(GPIOB , GPIO_PIN_5 , GPIO_MODE_OUT_PP_LOW_SLOW);
@@ -74,6 +75,7 @@ void testio()
   GPIO_Init(GPIOD , GPIO_PIN_1 , GPIO_MODE_OUT_PP_LOW_SLOW);
   GPIO_Init(GPIOD , GPIO_PIN_7 , GPIO_MODE_OUT_PP_LOW_SLOW);
 }
+#endif
 
 // Choose Product Name & Type
 #ifdef ZENSENSOR
@@ -91,11 +93,11 @@ void testio()
 #define BACKUP_CONFIG_ADDRESS           (FLASH_DATA_START_PHYSICAL_ADDRESS + BACKUP_CONFIG_BLOCK_NUM * FLASH_BLOCK_SIZE)
 
 // RF channel for the sensor net, 0-127
-#define RF24_CHANNEL	   		71
+#define RF24_CHANNEL	   		100
 
 // Window Watchdog
 // Uncomment this line if in debug mode
-#define DEBUG_NO_WWDG
+//#define DEBUG_NO_WWDG
 #define WWDG_COUNTER                    0x7f
 #define WWDG_WINDOW                     0x77
 
@@ -366,7 +368,7 @@ void LoadConfig()
         //sprintf(gConfig.ProductName, "%s", XLA_PRODUCT_NAME);
         gConfig.rfChannel = RF24_CHANNEL;
         gConfig.rfPowerLevel = RF24_PA_MAX;
-        gConfig.rfDataRate = RF24_1MBPS;
+        gConfig.rfDataRate = RF24_250KBPS;
 
 #ifdef EN_SENSOR_ALS
         gConfig.senMap |= sensorALS;
@@ -397,7 +399,6 @@ void LoadConfig()
   
     // Start ZenSensor
     gConfig.state = 1;
-    
     // Engineering code
     if(XLA_PRODUCT_Type == ZEN_TARGET_SUPERSENSOR)
     {
@@ -746,7 +747,9 @@ int main( void ) {
 #endif  
   keySimulator_init();
   relay_key_init(); 
+#ifdef TEST
    testio();
+#endif
   while(1) {
     // Go on only if NRF chip is presented
     disableInterrupts();
@@ -912,9 +915,13 @@ int main( void ) {
       ResetRFModule();
       ////////////rfscanner process/////////////////////////////// 
       // Send message if ready
+#ifdef TEST
       PB4_High;
+#endif
       SendMyMessage();
+#ifdef TEST
       PB4_Low;
+#endif
       // Save Config if Changed
       SaveConfig();
       
@@ -973,13 +980,17 @@ void tmrProcess() {
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
-	PD7_High;
+#ifdef TEST
+  PD7_High;
+#endif
   if(RF24L01_is_data_available()) {
     //Packet was received
     RF24L01_clear_interrupts();
     RF24L01_read_payload(prcvMsg, PLOAD_WIDTH);
     bMsgReady = ParseProtocol();
-	PD7_Low;
+#ifdef TEST
+    PD7_Low;
+#endif
     return;
   }
  
@@ -988,10 +999,14 @@ INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
     //Packet was sent or max retries reached
     RF24L01_clear_interrupts();
     mutex = sent_info;
+#ifdef TEST
     PD7_Low;
+#endif    
     return;
   }
 
    RF24L01_clear_interrupts();
+#ifdef TEST
    PD7_Low;
+#endif   
 }
