@@ -509,7 +509,10 @@ bool SendMyMessage() {
           m_cntRFReset++;
           if( m_cntRFReset >= 3 ) {
             // Cold Reset
-            //WWDG->CR = 0x80;
+            if(XLA_PRODUCT_Type!=ZEN_TARGET_SPOTLIGHT)
+            {
+              WWDG->CR = 0x80;
+            }         
             m_cntRFReset = 0;
             //printlog("cold reset\r\n");
             break;
