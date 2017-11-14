@@ -21,6 +21,15 @@ u8 ac_media_buf_read_ptr = 0;
 u8 ac_media_buf_write_ptr = 0;
 u8 ac_media_buf_len = 0;
 
+#ifdef AIRCON_MEDIA
+char mediaoff[4] = {0xB2,0x7B,0xE0,0x00};
+char media_last_on_status[4] = {0xB2,0x3F,0xD0,0x00};
+#endif
+#ifdef AIRCON_HAIER
+char haieroff[15] = {0};
+char haier_last_on_status[15] = {0};
+#endif
+
 /*******************************************************************************
  * 名称: TIM1_PWM_Init
  * 功能: TIM1初始化函数 用作PWM输出 38khz
@@ -31,7 +40,7 @@ u8 ac_media_buf_len = 0;
 void TIM1_PWM_Init(void)
 { 
   TIM1_DeInit();
-  TIM1_TimeBaseInit(1-1, TIM1_COUNTERMODE_UP, 421, 0x00);       //  2kHz  (8000*1)/16000000
+  TIM1_TimeBaseInit(1-1, TIM1_COUNTERMODE_UP, 421, 0x00);       // 38khz 16000/38 = 421 
   
 #ifdef CHANNEL1
   TIM1_OC1Init(TIM1_OCMODE_PWM2, TIM1_OUTPUTSTATE_ENABLE, TIM1_OUTPUTNSTATE_DISABLE,
@@ -170,6 +179,7 @@ void NEC_Infrared_Send(unsigned long data)
  ******************************************************************************/
 void Haier_Infrared_Send(uint8_t data[], int len)
 {
+  printlog("Haier_Infrared_Send...\r\n");
   HAIER_HDR_MARK
   HAIER_HDR_SPACE
   HAIER_HDR_MARK
@@ -220,6 +230,7 @@ void Haier_Infrared_Send(uint8_t data[], int len)
  ******************************************************************************/
 void Media_Infrared_Send(uint8_t base, uint8_t high, uint8_t low)
 {
+  printlog("Media_Infrared_Send...\r\n");
 
   MEDIA_HDR_MARK
   MEDIA_HDR_SPACE
@@ -474,6 +485,11 @@ void IR_Send()
     // Send all data at a time
   if( ac_media_buf_len > 0 ) {
     Media_Infrared_Send(air_condition_media_buf[0],air_condition_media_buf[1],air_condition_media_buf[2]);
+    if(air_condition_media_buf[1] != 0x7B || air_condition_media_buf[2] != 0xE0)
+    { // not off,record last open status
+      media_last_on_status[1] = air_condition_media_buf[1];
+      media_last_on_status[2] = air_condition_media_buf[2];
+    }
     ac_media_buf_write_ptr = 0;
     ac_media_buf_read_ptr = 0;
     ac_media_buf_len = 0;

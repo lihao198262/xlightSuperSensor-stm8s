@@ -64,6 +64,19 @@ Connections:
 
 */
 
+#ifdef TEST
+void testio()
+{
+  GPIO_Init(GPIOB , GPIO_PIN_5 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_4 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_3 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_2 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_1 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOD , GPIO_PIN_1 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOD , GPIO_PIN_7 , GPIO_MODE_OUT_PP_LOW_SLOW);
+}
+#endif
+
 // Choose Product Name & Type
 #ifdef ZENSENSOR
 #define XLA_PRODUCT_NAME          "ZENSENSOR"
@@ -80,7 +93,7 @@ Connections:
 #define BACKUP_CONFIG_ADDRESS           (FLASH_DATA_START_PHYSICAL_ADDRESS + BACKUP_CONFIG_BLOCK_NUM * FLASH_BLOCK_SIZE)
 
 // RF channel for the sensor net, 0-127
-#define RF24_CHANNEL	   		71
+#define RF24_CHANNEL	   		100
 
 // Window Watchdog
 // Uncomment this line if in debug mode
@@ -115,7 +128,7 @@ Connections:
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
 
-#define DEBUG_LOG
+//#define DEBUG_LOG
 
 // Unique ID
 #if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
@@ -148,7 +161,8 @@ uint8_t mutex = 0;
 uint16_t mTimerKeepAlive = 0;
 uint8_t m_cntRFReset = 0;
 uint8_t m_cntRFSendFailed = 0;
-
+// avoid flash write operator reentry
+uint8_t flashWritting = 0;
 
 #ifdef EN_SENSOR_ALS
    uint16_t als_tick = 0;
@@ -199,6 +213,20 @@ void feed_wwdg(void) {
 #endif  
 }
 
+
+int8_t wait_flashflag_status(uint8_t flag,uint8_t status)
+{
+    uint16_t timeout = 60000;
+    while( FLASH_GetFlagStatus(flag)== status && timeout--);
+    if(!timeout) 
+    {
+      printlog("timeout!");
+      return 1;
+    }
+    return 0;
+}
+
+
 void Flash_ReadBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
   assert_param(IS_FLASH_ADDRESS_OK(Address));
   assert_param(IS_FLASH_ADDRESS_OK(Address+Length));
@@ -211,11 +239,17 @@ void Flash_ReadBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
 bool Flash_WriteBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
   assert_param(IS_FLASH_ADDRESS_OK(Address));
   assert_param(IS_FLASH_ADDRESS_OK(Address+Length));
-  
+  if(flashWritting == 1)
+  {
+    printlog("iswriting");
+    return FALSE;
+  }
+  flashWritting = 1;
   // Init Flash Read & Write
   FLASH_SetProgrammingTime(FLASH_PROGRAMTIME_STANDARD);
   FLASH_Unlock(FLASH_MEMTYPE_DATA);
-  while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  //while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  if(wait_flashflag_status(FLASH_FLAG_DUL,RESET)) return FALSE;
   
   // Write byte by byte
   bool rc = TRUE;
@@ -236,14 +270,22 @@ bool Flash_WriteBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
     }
   }
   FLASH_Lock(FLASH_MEMTYPE_DATA);
+  flashWritting = 0;
   return rc;
 }
  
-void Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length) {
+bool Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length) {
   // Init Flash Read & Write
+  if(flashWritting == 1) 
+  {
+    printlog("iswriting");
+    return FALSE;
+  }
+  flashWritting = 1;
   FLASH_SetProgrammingTime(FLASH_PROGRAMTIME_STANDARD);
   FLASH_Unlock(FLASH_MEMTYPE_DATA);
-  while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  //while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  if(wait_flashflag_status(FLASH_FLAG_DUL,RESET)) return FALSE;
   
   uint8_t WriteBuf[FLASH_BLOCK_SIZE];
   uint16_t nBlockNum = (Length - 1) / FLASH_BLOCK_SIZE + 1;
@@ -257,6 +299,8 @@ void Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length
   }
   
   FLASH_Lock(FLASH_MEMTYPE_DATA);
+  flashWritting = 0;
+  return TRUE;
 }
 
 uint8_t *Read_UniqueID(uint8_t *UniqueID, uint16_t Length)  
@@ -287,8 +331,14 @@ void SaveBackupConfig()
 {
   if( gNeedSaveBackup ) {
     // Overwrite entire config FLASH
-    Flash_WriteDataBlock(BACKUP_CONFIG_BLOCK_NUM, (uint8_t *)&gConfig, sizeof(gConfig));
-    gNeedSaveBackup = FALSE;
+    if(Flash_WriteDataBlock(BACKUP_CONFIG_BLOCK_NUM, (uint8_t *)&gConfig, sizeof(gConfig)))
+    {
+      gNeedSaveBackup = FALSE;
+    }
+    else
+    {
+      printlog("back write fail");
+    }
   }
 }
 
@@ -299,8 +349,14 @@ void SaveStatusData()
     uint8_t pData[50] = {0};
     uint16_t nLen = (uint16_t)(&(gConfig.nodeID)) - (uint16_t)(&gConfig);
     memcpy(pData, (uint8_t *)&gConfig, nLen);
-    Flash_WriteBuf(FLASH_DATA_START_PHYSICAL_ADDRESS + 1, pData + 1, nLen - 1);
-    gIsStatusChanged = FALSE;
+    if(Flash_WriteBuf(FLASH_DATA_START_PHYSICAL_ADDRESS + 1, pData + 1, nLen - 1))
+    {
+      gIsStatusChanged = FALSE;
+    }
+    else
+    {
+      printlog("status write fail");
+    }  
 }
 
 // Save config to Flash
@@ -308,13 +364,18 @@ void SaveConfig()
 {
   if( gIsChanged ) {
     // Overwrite entire config FLASH
-    Flash_WriteDataBlock(0, (uint8_t *)&gConfig, sizeof(gConfig));
-    gIsStatusChanged = FALSE;
-    gIsChanged = FALSE;
     if( !isNodeIdRequired() ) gNeedSaveBackup = TRUE;
-    return;
+    if(Flash_WriteDataBlock(0, (uint8_t *)&gConfig, sizeof(gConfig)))
+    {
+      gIsStatusChanged = FALSE;
+      gIsChanged = FALSE;
+      return;
+    }
+    else
+    {
+      printlog("cfg write fail");
+    }   
   }
-
   if( gIsStatusChanged ) {
     // Overwrite only Static & status parameters (the first part of config FLASH)
     SaveStatusData();
@@ -355,7 +416,7 @@ void LoadConfig()
         //sprintf(gConfig.ProductName, "%s", XLA_PRODUCT_NAME);
         gConfig.rfChannel = RF24_CHANNEL;
         gConfig.rfPowerLevel = RF24_PA_MAX;
-        gConfig.rfDataRate = RF24_1MBPS;
+        gConfig.rfDataRate = RF24_250KBPS;
 
 #ifdef EN_SENSOR_ALS
         gConfig.senMap |= sensorALS;
@@ -386,7 +447,6 @@ void LoadConfig()
   
     // Start ZenSensor
     gConfig.state = 1;
-    
     // Engineering code
     if(XLA_PRODUCT_Type == ZEN_TARGET_SUPERSENSOR)
     {
@@ -481,9 +541,10 @@ bool SendMyMessage() {
     while (lv_tried++ <= gConfig.rptTimes ) {
       
       mutex = 0;
-      RF24L01_set_mode_TX();
-      RF24L01_write_payload(psndMsg, PLOAD_WIDTH);
-
+      if(RF24L01_set_mode_TX_timeout() == -1) 
+        break;
+      if(RF24L01_write_payload_timeout(psndMsg, PLOAD_WIDTH) == -1) 
+        break;
       WaitMutex(0x1FFFF);
       if (mutex == 1) {
         m_cntRFSendFailed = 0;
@@ -496,7 +557,10 @@ bool SendMyMessage() {
           m_cntRFReset++;
           if( m_cntRFReset >= 3 ) {
             // Cold Reset
-            //WWDG->CR = 0x80;
+            if(XLA_PRODUCT_Type!=ZEN_TARGET_SPOTLIGHT)
+            {
+              WWDG->CR = 0x80;
+            }         
             m_cntRFReset = 0;
             //printlog("cold reset\r\n");
             break;
@@ -734,6 +798,9 @@ int main( void ) {
 #endif  
   keySimulator_init();
   relay_key_init(); 
+#ifdef TEST
+   testio();
+#endif
   while(1) {
     // Go on only if NRF chip is presented
     disableInterrupts();
@@ -747,7 +814,7 @@ int main( void ) {
       }
       feed_wwdg();
     }
-    
+    printlog("check end...\r\n");
     // IRQ
     NRF2401_EnableIRQ();
     // Must establish connection firstly
@@ -899,8 +966,13 @@ int main( void ) {
       ResetRFModule();
       ////////////rfscanner process/////////////////////////////// 
       // Send message if ready
+#ifdef TEST
+      PB4_High;
+#endif
       SendMyMessage();
-      
+#ifdef TEST
+      PB4_Low;
+#endif
       // Save Config if Changed
       SaveConfig();
       
@@ -959,11 +1031,17 @@ void tmrProcess() {
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
+#ifdef TEST
+  PD7_High;
+#endif
   if(RF24L01_is_data_available()) {
     //Packet was received
     RF24L01_clear_interrupts();
     RF24L01_read_payload(prcvMsg, PLOAD_WIDTH);
     bMsgReady = ParseProtocol();
+#ifdef TEST
+    PD7_Low;
+#endif
     return;
   }
  
@@ -972,8 +1050,14 @@ INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
     //Packet was sent or max retries reached
     RF24L01_clear_interrupts();
     mutex = sent_info;
+#ifdef TEST
+    PD7_Low;
+#endif    
     return;
   }
 
    RF24L01_clear_interrupts();
+#ifdef TEST
+   PD7_Low;
+#endif   
 }

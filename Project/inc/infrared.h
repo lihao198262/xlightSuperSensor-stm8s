@@ -17,7 +17,21 @@
 #define CHANNEL1
 
 #define HAIER_CON 0xA1
+
 #define MEDIA_CON 0xA2
+
+#define AIRCON_MEDIA
+//#define AIRCON_HAIER
+#ifdef AIRCON_MEDIA
+extern char mediaoff[4];
+extern char media_last_on_status[4];
+#endif
+#ifdef AIRCON_HAIER
+extern char haieroff[15];
+extern char haier_last_on_status[15];
+#endif
+
+
 
 /*******************************************************************************
  * Ãû³Æ: Haier_Infrared_Send
@@ -72,6 +86,8 @@ extern u16 ir_send_delay;
 bool Set_Send_Buf(u32 *buf, u8 len);
 
 bool Set_AC_Buf(uint8_t *buf, u8 len);
+
+bool Set_AC_Media_Buf(uint8_t *buf, u8 len);
 
 void IR_Send();
 
