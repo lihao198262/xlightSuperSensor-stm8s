@@ -291,7 +291,12 @@ bool Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length
   uint16_t nBlockNum = (Length - 1) / FLASH_BLOCK_SIZE + 1;
   for( uint16_t block = nStartBlock; block < nStartBlock + nBlockNum; block++ ) {
     memset(WriteBuf, 0x00, FLASH_BLOCK_SIZE);
-    for( uint16_t i = 0; i < FLASH_BLOCK_SIZE; i++ ) {
+    uint8_t maxLen = FLASH_BLOCK_SIZE;
+    if(block == nStartBlock + nBlockNum -1)
+    {
+      maxLen = Length - (nBlockNum -1)*FLASH_BLOCK_SIZE;
+    }
+    for( uint16_t i = 0; i < maxLen; i++ ) {
       WriteBuf[i] = Buffer[(block - nStartBlock) * FLASH_BLOCK_SIZE + i];
     }
     FLASH_ProgramBlock(block, FLASH_MEMTYPE_DATA, FLASH_PROGRAMMODE_STANDARD, WriteBuf);
@@ -362,6 +367,9 @@ void SaveStatusData()
 // Save config to Flash
 void SaveConfig()
 {
+#ifdef TEST
+  PB2_High;
+#endif
   if( gIsChanged ) {
     // Overwrite entire config FLASH
     if( !isNodeIdRequired() ) gNeedSaveBackup = TRUE;
@@ -376,10 +384,19 @@ void SaveConfig()
       printlog("cfg write fail");
     }   
   }
+#ifdef TEST
+  PB2_Low;
+#endif
+#ifdef TEST
+  PB1_High;
+#endif
   if( gIsStatusChanged ) {
     // Overwrite only Static & status parameters (the first part of config FLASH)
     SaveStatusData();
-  }  
+  } 
+#ifdef TEST
+  PB1_Low;
+#endif
 }
 
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController

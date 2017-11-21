@@ -6,9 +6,9 @@
 #define DHT11
 //#define DHT22
 
-static uint16_t collect_times = 0;
-static uint16_t collect_times_success = 0;
-static uint16_t collect_times_fail = 0;
+//static uint16_t collect_times = 0;
+//static uint16_t collect_times_success = 0;
+//static uint16_t collect_times_fail = 0;
 static uint16_t dht11_timeout;
 
 #define F_MASTER_MHZ    16
@@ -29,7 +29,7 @@ u8 wait_high(uint16_t timeout)
   return 0;
 }
 #define DHT_TEM_MA_NUM         10
-#define DHT_HUM_MA_NUM         40
+#define DHT_HUM_MA_NUM         20
 
 #ifdef DHT11
 #define DHT_TEM_MAX            50
@@ -187,7 +187,7 @@ failed:
 
 RESULT DHT_GetData(s16 * t, s16 * h)
 {
-   collect_times++;
+   //collect_times++;
   /*if(collect_times == 600)
   {
      return RESULT_OK;
@@ -237,22 +237,15 @@ RESULT DHT_GetData(s16 * t, s16 * h)
     *t = tem10 * 10;
 #endif
     
-    collect_times_success++;
-    /*if(collect_times_success == 500)
-    {
-      //printf("oh,no");
-      return RESULT_OK;
-    }*/
+    //collect_times_success++;
   }
-  else
+  /*else
   {
     collect_times_fail++;
-    /*if(collect_times_fail == 500)
-    {
-      //printf("oh,no");
-      return RESULT_ERRCHKSUM;
-    }*/
-  }
-  
+  }*/
+  /*printlog("t=");
+  printnum(collect_times);
+  printlog(",s=");
+  printnum(collect_times_success);*/
   return rc;
 }

@@ -550,6 +550,10 @@ type 1  ---- tem
 type 2  ---- hum
 */
 void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type) {
+  /*printlog("send t=");
+  printnum(dht_t);
+  printlog(",h=");
+  printnum(dht_h);*/
   if(type == 0)
   {
       build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
