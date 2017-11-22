@@ -185,6 +185,17 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define IS_TARGET_SPOTLIGHT(nTag)       (((nTag) & 0xF0) == ZEN_TARGET_SPOTLIGHT)
 #define IS_TARGET_SUPERSENSOR(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_SUPERSENSOR)
 
+// Choose Product Name & Type
+#ifdef ZENSENSOR
+#define XLA_PRODUCT_NAME          "ZENSENSOR"
+#define XLA_PRODUCT_Type          ZEN_TARGET_SUPERSENSOR
+#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
+#else
+#define XLA_PRODUCT_NAME          "ZENREMOTE"
+#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
+#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
+#endif
+
 //#define TEST
 #ifdef TEST
 #define     PB5_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_5)

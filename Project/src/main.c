@@ -77,17 +77,6 @@ void testio()
 }
 #endif
 
-// Choose Product Name & Type
-#ifdef ZENSENSOR
-#define XLA_PRODUCT_NAME          "ZENSENSOR"
-#define XLA_PRODUCT_Type          ZEN_TARGET_SUPERSENSOR
-#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
-#else
-#define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
-#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
-#endif
-
 // Starting Flash block number of backup config
 #define BACKUP_CONFIG_BLOCK_NUM         2
 #define BACKUP_CONFIG_ADDRESS           (FLASH_DATA_START_PHYSICAL_ADDRESS + BACKUP_CONFIG_BLOCK_NUM * FLASH_BLOCK_SIZE)
@@ -464,6 +453,7 @@ void LoadConfig()
   
     // Start ZenSensor
     gConfig.state = 1;
+    gConfig.nodeID = XLA_PRODUCT_NODEID;
     // Engineering code
     if(XLA_PRODUCT_Type == ZEN_TARGET_SUPERSENSOR)
     {
