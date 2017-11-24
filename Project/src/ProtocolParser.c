@@ -108,10 +108,17 @@ uint8_t ParseProtocol(){
             return 0;
           }
         }
-        gConfig.nodeID = lv_nodeID;
-        memcpy(gConfig.NetworkID, rcvMsg.payload.data, sizeof(gConfig.NetworkID));
-        gIsChanged = TRUE;
-        GotNodeID();
+        if(gConfig.nodeID != XLA_PRODUCT_NODEID)
+        {
+          gConfig.nodeID = XLA_PRODUCT_NODEID;
+          gIsChanged = TRUE;
+        }   
+        if(_isAck)
+        { // request nodeid response
+          memcpy(gConfig.NetworkID, rcvMsg.payload.data, sizeof(gConfig.NetworkID));
+          gIsChanged = TRUE;
+          GotNodeID();
+        }
       }
     } else if( _type == I_REBOOT ) {
       if( IS_MINE_SUBID(_sensor) ) {
