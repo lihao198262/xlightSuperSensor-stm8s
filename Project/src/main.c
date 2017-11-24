@@ -77,20 +77,11 @@ void testio()
 }
 #endif
 
-// Choose Product Name & Type
-#ifdef ZENSENSOR
-#define XLA_PRODUCT_NAME          "ZENSENSOR"
-#define XLA_PRODUCT_Type          ZEN_TARGET_SUPERSENSOR
-#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
-#else
-#define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
-#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
-#endif
-
 // Starting Flash block number of backup config
 #define BACKUP_CONFIG_BLOCK_NUM         2
 #define BACKUP_CONFIG_ADDRESS           (FLASH_DATA_START_PHYSICAL_ADDRESS + BACKUP_CONFIG_BLOCK_NUM * FLASH_BLOCK_SIZE)
+#define STATUS_DATA_NUM                 4
+#define STATUS_DATA_ADDRESS             (FLASH_DATA_START_PHYSICAL_ADDRESS + STATUS_DATA_NUM * FLASH_BLOCK_SIZE)
 
 // RF channel for the sensor net, 0-127
 #define RF24_CHANNEL	   		100
@@ -291,7 +282,12 @@ bool Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length
   uint16_t nBlockNum = (Length - 1) / FLASH_BLOCK_SIZE + 1;
   for( uint16_t block = nStartBlock; block < nStartBlock + nBlockNum; block++ ) {
     memset(WriteBuf, 0x00, FLASH_BLOCK_SIZE);
-    for( uint16_t i = 0; i < FLASH_BLOCK_SIZE; i++ ) {
+    uint8_t maxLen = FLASH_BLOCK_SIZE;
+    if(block == nStartBlock + nBlockNum -1)
+    {
+      maxLen = Length - (nBlockNum -1)*FLASH_BLOCK_SIZE;
+    }
+    for( uint16_t i = 0; i < maxLen; i++ ) {
       WriteBuf[i] = Buffer[(block - nStartBlock) * FLASH_BLOCK_SIZE + i];
     }
     FLASH_ProgramBlock(block, FLASH_MEMTYPE_DATA, FLASH_PROGRAMMODE_STANDARD, WriteBuf);
@@ -349,7 +345,7 @@ void SaveStatusData()
     uint8_t pData[50] = {0};
     uint16_t nLen = (uint16_t)(&(gConfig.nodeID)) - (uint16_t)(&gConfig);
     memcpy(pData, (uint8_t *)&gConfig, nLen);
-    if(Flash_WriteBuf(FLASH_DATA_START_PHYSICAL_ADDRESS + 1, pData + 1, nLen - 1))
+    if(Flash_WriteDataBlock(STATUS_DATA_NUM, pData, nLen))
     {
       gIsStatusChanged = FALSE;
     }
@@ -362,24 +358,30 @@ void SaveStatusData()
 // Save config to Flash
 void SaveConfig()
 {
+  if( gIsStatusChanged ) {
+    // Overwrite only Static & status parameters
+    SaveStatusData();
+    gIsChanged = TRUE;
+  }
+#ifdef TEST
+  PB2_High;
+#endif
   if( gIsChanged ) {
     // Overwrite entire config FLASH
     if( !isNodeIdRequired() ) gNeedSaveBackup = TRUE;
-    if(Flash_WriteDataBlock(0, (uint8_t *)&gConfig, sizeof(gConfig)))
-    {
-      gIsStatusChanged = FALSE;
-      gIsChanged = FALSE;
-      return;
+    uint8_t Attmpts = 0;
+    while(++Attmpts <= 3) {
+      if(Flash_WriteDataBlock(0, (uint8_t *)&gConfig, sizeof(gConfig)))
+      {
+        gIsStatusChanged = FALSE;
+        gIsChanged = FALSE;
+        break;
+      }
     }
-    else
-    {
-      printlog("cfg write fail");
-    }   
   }
-  if( gIsStatusChanged ) {
-    // Overwrite only Static & status parameters (the first part of config FLASH)
-    SaveStatusData();
-  }  
+#ifdef TEST
+  PB2_Low;
+#endif
 }
 
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController
@@ -444,9 +446,17 @@ void LoadConfig()
       Flash_ReadBuf(BACKUP_CONFIG_ADDRESS, (uint8_t *)&bytVersion, sizeof(bytVersion));
       if( bytVersion != gConfig.version ) gNeedSaveBackup = TRUE;
     }
-  
+    // Load the most recent status from FLASH
+    uint8_t pData[50] = {0};
+    uint16_t nLen = (uint16_t)(&(gConfig.nodeID)) - (uint16_t)(&gConfig);
+    Flash_ReadBuf(STATUS_DATA_ADDRESS, pData, nLen);
+    if(pData[0] >= XLA_MIN_VER_REQUIREMENT && pData[0] <= XLA_VERSION)
+    {
+      memcpy(&gConfig,pData,nLen);
+    }
     // Start ZenSensor
     gConfig.state = 1;
+    gConfig.nodeID = XLA_PRODUCT_NODEID;
     // Engineering code
     if(XLA_PRODUCT_Type == ZEN_TARGET_SUPERSENSOR)
     {
@@ -603,15 +613,15 @@ bool SendMyMessage() {
 void GotNodeID() {
   mGotNodeID = TRUE;
   UpdateNodeAddress(NODEID_GATEWAY);
-  //gIsChanged = TRUE;
-  SaveConfig();
+  gIsChanged = TRUE;
+  //SaveConfig();
 }
 
 void GotPresented() {
   mStatus = SYS_RUNNING;
   gConfig.swTimes = 0;
-  gIsChanged = TRUE;
-  SaveConfig();  
+  gIsStatusChanged = TRUE;
+  //SaveConfig();  
 }
 
 bool SayHelloToDevice(bool infinate) {
@@ -681,7 +691,7 @@ bool SayHelloToDevice(bool infinate) {
     // Reset switch count
     if( _count >= 10 && gConfig.swTimes > 0 ) {
       gConfig.swTimes = 0;
-      gIsChanged = TRUE;
+      gIsStatusChanged = TRUE;
       SaveConfig();
     }
     
@@ -754,7 +764,7 @@ int main( void ) {
   // Init Watchdog
   wwdg_init();
   
-  gIsChanged = TRUE;
+  gIsStatusChanged = TRUE;
   SaveConfig();
   
   // Init sensors

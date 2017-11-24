@@ -69,6 +69,10 @@ bool SendCfgBlock(uint8_t offset,uint8_t size,uint8_t isNeedUniqueid) {
 void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _type, bool _enableAck, bool _isAck)
 {
     sndMsg.header.version_length = PROTOCOL_VERSION;
+    if(gConfig.nodeID != XLA_PRODUCT_NODEID)
+    {
+      gConfig.nodeID = XLA_PRODUCT_NODEID;
+    }
     sndMsg.header.sender = gConfig.nodeID;
     sndMsg.header.destination = _destination;
     sndMsg.header.sensor = _sensor;
@@ -104,10 +108,17 @@ uint8_t ParseProtocol(){
             return 0;
           }
         }
-        gConfig.nodeID = lv_nodeID;
-        memcpy(gConfig.NetworkID, rcvMsg.payload.data, sizeof(gConfig.NetworkID));
-        gIsChanged = TRUE;
-        GotNodeID();
+        if(gConfig.nodeID != XLA_PRODUCT_NODEID)
+        {
+          gConfig.nodeID = XLA_PRODUCT_NODEID;
+          gIsChanged = TRUE;
+        }   
+        if(_isAck)
+        { // request nodeid response
+          memcpy(gConfig.NetworkID, rcvMsg.payload.data, sizeof(gConfig.NetworkID));
+          gIsChanged = TRUE;
+          GotNodeID();
+        }
       }
     } else if( _type == I_REBOOT ) {
       if( IS_MINE_SUBID(_sensor) ) {
@@ -550,6 +561,10 @@ type 1  ---- tem
 type 2  ---- hum
 */
 void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type) {
+  /*printlog("send t=");
+  printnum(dht_t);
+  printlog(",h=");
+  printnum(dht_h);*/
   if(type == 0)
   {
       build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
