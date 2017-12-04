@@ -3,11 +3,17 @@
 #include "MyMessage.h"
 #include "xliNodeConfig.h"
 #include "ProtocolParser.h"
+#ifdef EN_SENSOR_PM25 || DEBUG_LOG
 #include "Uart2Dev.h"
+#endif
 #include "timer_4.h"
 #include "relay_key.h"
+#ifndef EN_PANEL_BUTTONS
 #include "keySimulator.h"
+#endif
+#ifdef EN_INFRARED
 #include "infrared.h"
+#endif
 
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
 #include "ADC1Dev.h"
@@ -119,7 +125,6 @@ void testio()
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
 
-//#define DEBUG_LOG
 
 // Unique ID
 #if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
@@ -232,7 +237,6 @@ bool Flash_WriteBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
   assert_param(IS_FLASH_ADDRESS_OK(Address+Length));
   if(flashWritting == 1)
   {
-    printlog("iswriting");
     return FALSE;
   }
   flashWritting = 1;
@@ -269,7 +273,6 @@ bool Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length
   // Init Flash Read & Write
   if(flashWritting == 1) 
   {
-    printlog("iswriting");
     return FALSE;
   }
   flashWritting = 1;
@@ -331,10 +334,6 @@ void SaveBackupConfig()
     {
       gNeedSaveBackup = FALSE;
     }
-    else
-    {
-      printlog("back write fail");
-    }
   }
 }
 
@@ -349,10 +348,6 @@ void SaveStatusData()
     {
       gIsStatusChanged = FALSE;
     }
-    else
-    {
-      printlog("status write fail");
-    }  
 }
 
 // Save config to Flash
@@ -572,7 +567,6 @@ bool SendMyMessage() {
               WWDG->CR = 0x80;
             }         
             m_cntRFReset = 0;
-            //printlog("cold reset\r\n");
             break;
           } else if( m_cntRFReset >= 2 ) {
             // Reset whole node
@@ -824,7 +818,6 @@ int main( void ) {
       }
       feed_wwdg();
     }
-    printlog("check end...\r\n");
     // IRQ
     NRF2401_EnableIRQ();
     // Must establish connection firstly
@@ -1018,9 +1011,11 @@ void tmrProcess() {
   dht_collect_tick++;
 #endif
   
+#ifdef EN_INFRARED
   // Ir-send timer count down
   if( ir_send_delay > 0 ) ir_send_delay--;
-  
+#endif  
+#ifndef EN_PANEL_BUTTONS
   // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
@@ -1028,6 +1023,7 @@ void tmrProcess() {
       ScanKeyBuffer(i);
     }
   }
+#endif
   
 #ifdef EN_PANEL_BUTTONS  
   //////zql add for relay key//////////////

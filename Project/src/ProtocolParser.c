@@ -83,7 +83,7 @@ void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _typ
 }
 
 uint8_t ParseProtocol(){
-  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 )) ) return 0;
+  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 || rcvMsg.header.sender == NODEID_GATEWAY)) ) return 0;
   
   uint8_t _cmd = miGetCommand();
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
