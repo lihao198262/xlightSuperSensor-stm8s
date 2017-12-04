@@ -1,5 +1,6 @@
 #include <stm8s.h>
 #include "timer_2.h"
+#include "_global.h"
 
 void TIM2_Init(void)
 {
@@ -17,6 +18,7 @@ void Delayms(u16 _ms) {
   while(ms_10us--) {
     while( TIM2_GetFlagStatus(TIM2_FLAG_UPDATE) == RESET );
     TIM2_ClearFlag(TIM2_FLAG_UPDATE);
+    feed_wwdg();
   }
   TIM2_Cmd(DISABLE);
 }
@@ -27,6 +29,7 @@ void Delay10Us(u8 _delay) {
   while(_delay--) {
     while( TIM2_GetFlagStatus(TIM2_FLAG_UPDATE) == RESET );
     TIM2_ClearFlag(TIM2_FLAG_UPDATE);
+    feed_wwdg();
   }
   TIM2_Cmd(DISABLE);
 }
@@ -40,6 +43,7 @@ void Delay_50Us(u16 nTime)
   while(n_10us--) {
     while( TIM2_GetFlagStatus(TIM2_FLAG_UPDATE) == RESET );
     TIM2_ClearFlag(TIM2_FLAG_UPDATE);
+    feed_wwdg();
   }
   TIM2_Cmd(DISABLE);
 }
