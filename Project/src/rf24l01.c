@@ -316,7 +316,7 @@ void RF24L01_setup(uint8_t channel, uint8_t datarate, uint8_t powerlevel, uint8_
   RF24L01_write_register(RF24L01_reg_FEATURE, ((uint8_t *)&RF_FEATURE), 1);
 }
 
-void RF24L01_set_mode_TX(void) {
+/*void RF24L01_set_mode_TX(void) {
 
   RF24L01_send_command(RF24L01_command_FLUSH_TX);
   RF24L01_send_command(RF24L01_command_FLUSH_RX);
@@ -336,7 +336,7 @@ void RF24L01_set_mode_TX(void) {
   // Restore the pipe0 adddress
   RF24L01_write_register(RF24L01_reg_RX_ADDR_P0, tx_addr, ADDRESS_WIDTH);
   RF24L01_write_register(RF24L01_reg_TX_ADDR, tx_addr, ADDRESS_WIDTH);  
-}
+}*/
 
 int8_t RF24L01_set_mode_TX_timeout(void) {
 
@@ -463,7 +463,7 @@ RF24L01_reg_STATUS_content RF24L01_get_status_timeout(void) {
 	return *((RF24L01_reg_STATUS_content *) &status);
 }
 
-void RF24L01_write_payload(uint8_t *data, uint8_t length) {
+/*void RF24L01_write_payload(uint8_t *data, uint8_t length) {
   RF24L01_reg_STATUS_content a;
   a = RF24L01_get_status();
   if (a.MAX_RT == 1) {
@@ -501,7 +501,7 @@ void RF24L01_write_payload(uint8_t *data, uint8_t length) {
   uint16_t delay = 0xFF;
   while(delay--);
   CE_LOW;
-}
+}*/
 
 int8_t RF24L01_write_payload_timeout(uint8_t *data, uint8_t length) {
 	RF24L01_reg_STATUS_content a;

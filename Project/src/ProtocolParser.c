@@ -83,7 +83,7 @@ void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _typ
 }
 
 uint8_t ParseProtocol(){
-  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 )) ) return 0;
+  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 || rcvMsg.header.sender == NODEID_GATEWAY)) ) return 0;
   
   uint8_t _cmd = miGetCommand();
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
@@ -550,6 +550,37 @@ void Msg_SenPM25(uint16_t _value) {
   sndMsg.payload.data[0] = _value % 256;
   sndMsg.payload.data[1] = _value / 256;
   bMsgReady = 1;  
+}
+#endif
+
+#ifdef MULTI_SENSOR
+void Msg_SenAirQuality(uint16_t pm25,uint16_t pm10,uint16_t tvoc,uint16_t ch2o,uint16_t co2)
+{
+  build(NODEID_GATEWAY, S_AIR_QUALITY, C_PRESENTATION, V_LEVEL, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(10);
+  sndMsg.payload.data[0] = pm25 % 256;
+  sndMsg.payload.data[1] = pm25 / 256;
+  sndMsg.payload.data[2] = pm10 % 256;
+  sndMsg.payload.data[3] = pm10 / 256;
+  sndMsg.payload.data[4] = tvoc % 256;
+  sndMsg.payload.data[5] = tvoc / 256;
+  sndMsg.payload.data[6] = ch2o % 256;
+  sndMsg.payload.data[7] = ch2o / 256;
+  sndMsg.payload.data[8] = co2 % 256;
+  sndMsg.payload.data[9] = co2 / 256;
+  bMsgReady = 1; 
+}
+
+void Msg_SenTemHum(s16 tem,s16 hum) {
+  build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(4);
+  sndMsg.payload.data[0] = tem/100;
+  sndMsg.payload.data[1] = tem%100;
+  sndMsg.payload.data[2] = hum/100;
+  sndMsg.payload.data[3] = hum%100;    
+  bMsgReady = 1; 
 }
 #endif
 
