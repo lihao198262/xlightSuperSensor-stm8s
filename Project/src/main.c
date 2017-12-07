@@ -3,19 +3,28 @@
 #include "MyMessage.h"
 #include "xliNodeConfig.h"
 #include "ProtocolParser.h"
-#ifdef EN_SENSOR_PM25 || DEBUG_LOG
-#include "Uart2Dev.h"
-#endif
 #include "timer_4.h"
+
+#ifdef ZENREMOTE
 #include "relay_key.h"
 #ifndef EN_PANEL_BUTTONS
 #include "keySimulator.h"
 #endif
+#endif
+
+#ifdef MULTI_SENSOR
+#include "sen_multi.h"
+#endif
+
+#ifdef DEBUG_LOG
+#include "Uart2Dev.h"
+#endif
+
 #ifdef EN_INFRARED
 #include "infrared.h"
 #endif
 
-#ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
+#if (defined EN_SENSOR_ALS) || (defined EN_SENSOR_MIC)
 #include "ADC1Dev.h"
 #endif
 
@@ -94,7 +103,7 @@ void testio()
 
 // Window Watchdog
 // Uncomment this line if in debug mode
-//#define DEBUG_NO_WWDG
+#define DEBUG_NO_WWDG
 #define WWDG_COUNTER                    0x7f
 #define WWDG_WINDOW                     0x77
 
@@ -176,13 +185,19 @@ uint8_t flashWritting = 0;
    uint16_t irk_tick = 0;
 #endif
 
-#ifdef EN_SENSOR_PM25       
+#ifdef EN_SENSOR_PM25  
    uint16_t pm25_tick = 0;
 #endif 
 
 #ifdef EN_SENSOR_DHT       
    uint16_t dht_tem_tick = 0;
    uint16_t dht_collect_tick = 0;
+#endif
+   
+#ifdef MULTI_SENSOR
+#define MULTI_SENSOR_LIVE_TIMEOUT 18000 // 10ms unit(3min)
+uint16_t ariquality_tick = 0;
+uint16_t tem_hum_tick = 0;
 #endif
  
 void printlog(uint8_t *pBuf)
@@ -359,7 +374,7 @@ void SaveConfig()
     gIsChanged = TRUE;
   }
 #ifdef TEST
-  PB2_High;
+  PB3_High;
 #endif
   if( gIsChanged ) {
     // Overwrite entire config FLASH
@@ -375,7 +390,7 @@ void SaveConfig()
     }
   }
 #ifdef TEST
-  PB2_Low;
+  PB3_Low;
 #endif
 }
 
@@ -737,6 +752,16 @@ int main( void ) {
    uint16_t pre_dht_t = 0;
    uint16_t pre_dht_h = 0;
 #endif   
+ 
+#ifdef MULTI_SENSOR
+   uint16_t pre_pm25 = 0;
+   uint16_t pre_pm10 = 0;
+   uint16_t pre_tvoc = 0;
+   uint16_t pre_ch2o = 0;
+   uint16_t pre_co2 = 0;
+   int16_t pre_tem = 0;
+   int16_t pre_hum = 0;
+#endif
       
   //After reset, the device restarts by default with the HSI clock divided by 8.
   //CLK_DeInit();
@@ -779,13 +804,19 @@ int main( void ) {
   // Init ADC
   ADC1_Config();
 #endif 
+ 
+#ifdef MULTI_SENSOR 
+  multi_init();
+#endif
+  
   
 #ifdef DEBUG_LOG
-#ifndef EN_SENSOR_PM25
+#if (!defined EN_SENSOR_PM25) && (!defined MULTI_SENSOR)
   // Init serial ports
   uart2_config(9600);
 #endif
 #endif
+
   printlog("start...\r\n");
   // Init timer
   TIM4_10ms_handler = tmrProcess;
@@ -793,8 +824,10 @@ int main( void ) {
   
 #ifdef EN_SENSOR_DHT
   DHT_init();
-#else 
+#else
+#ifdef EN_INFRARED 
   Infrared_Init();
+#endif
 #endif  
 
 #ifdef EN_PANEL_BUTTONS
@@ -955,6 +988,42 @@ int main( void ) {
         }
 #endif
         
+#ifdef MULTI_SENSOR
+        PraseMultiSensorMsg();
+        if(multi_sensor_alive_tick >= MULTI_SENSOR_LIVE_TIMEOUT)
+        {
+            // Reset multi sensor moudle or restart the node
+            mStatus = SYS_RESET;
+            multi_init();
+        }
+        if( !bMsgReady && ariquality_tick > SEN_READ_PM25 ) {
+          if(ariquality_tick > SEN_MAX_SEND_INTERVAL )
+          {
+            ariquality_tick = 0;
+            Msg_SenAirQuality(pre_pm25,pre_pm10,pre_tvoc,pre_ch2o,pre_co2);
+          }
+          else if( pre_pm25 != pm25_value || pre_pm10 != pm10_value || pre_tvoc != tvoc_value || pre_ch2o != ch2o_value || pre_co2 != co2_value)
+          {
+            ariquality_tick = 0;
+            pre_pm25 = pm25_value;
+            pre_pm10 = pm10_value;
+            pre_tvoc = tvoc_value;
+            pre_ch2o = ch2o_value;
+            pre_co2 = co2_value;
+            // Send to Controller
+            Msg_SenAirQuality(pre_pm25,pre_pm10,pre_tvoc,pre_ch2o,pre_co2);
+          }
+        }
+        // tem & hum
+        if( !bMsgReady && tem_hum_tick > SEN_READ_DHT ) {
+            if( pre_tem != tem_value|| pre_hum != hum_value || tem_hum_tick > SEN_MAX_SEND_INTERVAL ) {
+              tem_hum_tick = 0;
+              pre_tem = tem_value;
+              pre_hum = hum_value;
+              Msg_SenTemHum(tem_value,hum_value);  
+            }
+        }
+#endif
         // Idle Tick
         if( !bMsgReady ) {
           // Check Keep Alive Timer
@@ -1015,7 +1084,8 @@ void tmrProcess() {
   // Ir-send timer count down
   if( ir_send_delay > 0 ) ir_send_delay--;
 #endif  
-#ifndef EN_PANEL_BUTTONS
+
+#if (defined ZENREMOTE) && (!defined EN_PANEL_BUTTONS)
   // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
@@ -1030,6 +1100,12 @@ void tmrProcess() {
   if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
 #endif  
+
+#ifdef MULTI_SENSOR
+  multi_sensor_alive_tick++;
+  ariquality_tick++;
+  tem_hum_tick++;
+#endif
   
     // Save config into backup area
    SaveBackupConfig();
