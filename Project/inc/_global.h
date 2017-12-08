@@ -10,7 +10,7 @@
 /// Comment off line to disable panel buttons(spotlight need)
 //#define EN_PANEL_BUTTONS
 /// Comment off line to disable infrared(aircondition need)
-//#define EN_INFRARED
+#define EN_INFRARED
 /// Comment off line to disable Relay key input
 //#define EN_SENSOR_IRKEY
 // Notes: EN_PANEL_BUTTONS & EN_SENSOR_IRKEY can't exist at the same time
@@ -20,23 +20,23 @@
 
 // Include Sensors
 /// Comment off line to disable sensor
-#define EN_SENSOR_ALS
+//#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
-#define MULTI_SENSOR
-#ifndef MULTI_SENSOR
+//#define MULTI_SENSOR
+//#ifndef MULTI_SENSOR
 //#define EN_SENSOR_DHT
 //#define EN_SENSOR_PM25
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
-#endif
+//#endif
 
 #ifdef ZENREMOTE
 #undef EN_SENSOR_DHT
 #endif
 
-#define DEBUG_LOG
+//#define DEBUG_LOG
 
 // Common Data Type
 #define UC                        uint8_t
@@ -203,7 +203,7 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 
-#define TEST
+//#define TEST
 #ifdef TEST
 #define     PB5_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_5)
 #define     PB4_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_4)

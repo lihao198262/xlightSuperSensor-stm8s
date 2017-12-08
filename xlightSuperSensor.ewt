@@ -135,9 +135,6 @@
         <name>$PROJ_DIR$\Project\inc\sen_mic.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\Project\inc\sen_multi.h</name>
-      </file>
-      <file>
         <name>$PROJ_DIR$\Project\inc\sen_pir.h</name>
       </file>
       <file>
@@ -211,6 +208,9 @@
       </file>
     </group>
   </group>
+  <file>
+    <name>$PROJ_DIR$\Project\inc\sen_multi.h</name>
+  </file>
 </project>
 
 
