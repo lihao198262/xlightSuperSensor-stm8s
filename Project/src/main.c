@@ -374,7 +374,7 @@ void SaveConfig()
     gIsChanged = TRUE;
   }
 #ifdef TEST
-  PB3_High;
+  PD7_High;
 #endif
   if( gIsChanged ) {
     // Overwrite entire config FLASH
@@ -390,7 +390,7 @@ void SaveConfig()
     }
   }
 #ifdef TEST
-  PB3_Low;
+  PD7_Low;
 #endif
 }
 
@@ -1039,11 +1039,11 @@ int main( void ) {
       ////////////rfscanner process/////////////////////////////// 
       // Send message if ready
 #ifdef TEST
-      PB4_High;
+      //PB4_High;
 #endif
       SendMyMessage();
 #ifdef TEST
-      PB4_Low;
+      //PB4_Low;
 #endif
       // Save Config if Changed
       SaveConfig();
@@ -1113,33 +1113,34 @@ void tmrProcess() {
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
-#ifdef TEST
-  PD7_High;
-#endif
+
   if(RF24L01_is_data_available()) {
+#ifdef TEST
+  PB3_High;
+#endif
     //Packet was received
     RF24L01_clear_interrupts();
     RF24L01_read_payload(prcvMsg, PLOAD_WIDTH);
     bMsgReady = ParseProtocol();
 #ifdef TEST
-    PD7_Low;
+    PB3_Low;
 #endif
     return;
   }
  
   uint8_t sent_info;
   if (sent_info = RF24L01_was_data_sent()) {
+#ifdef TEST
+  PB4_High;
+#endif
     //Packet was sent or max retries reached
     RF24L01_clear_interrupts();
     mutex = sent_info;
 #ifdef TEST
-    PD7_Low;
+    PB4_Low;
 #endif    
     return;
   }
 
    RF24L01_clear_interrupts();
-#ifdef TEST
-   PD7_Low;
-#endif   
 }

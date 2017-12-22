@@ -65,6 +65,17 @@ bool SendCfgBlock(uint8_t offset,uint8_t size,uint8_t isNeedUniqueid) {
     SendMyMessage();
 }
 
+// Send spotlight log
+/*void SpotlightStatusLog(uint8_t _st,uint8_t _relaykey) { 
+  char pBuf[20];
+  memset(pBuf, 0x00, 20);
+  pBuf[0] = 's';
+  pBuf[1] = ' ';
+  pBuf[2] = _st + '0';
+  pBuf[3] = _relaykey;
+  printlog((uint8_t *)pBuf);
+}*/
+
 // Assemble message
 void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _type, bool _enableAck, bool _isAck)
 {
@@ -317,9 +328,11 @@ uint8_t ParseProtocol(){
       }
       else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
         for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
+          // Send spotlight log
+          //SpotlightStatusLog(_type == V_RELAY_ON,idx + '1');
           if( relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON) ) {
             Msg_Relay_Ack(_sender, _type, rcvMsg.payload.data[idx]);
-            SendMyMessage();
+            //SendMyMessage();
           }
         }
       } else if( IS_TARGET_CURTAIN(gConfig.type) &&  IS_TARGET_CURTAIN(_type) ) {
@@ -327,6 +340,7 @@ uint8_t ParseProtocol(){
         /// Get SubID
         targetSubID = _type & 0x0F;
         _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        //printlog(rcvMsg.payload.data);
         if( _needAck ) {
           Msg_Relay_Ack(_sender, _type, _OnOff);
           return 1;
