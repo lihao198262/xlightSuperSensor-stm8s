@@ -201,7 +201,7 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
 #else
 #define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
+#define XLA_PRODUCT_Type          ZEN_TARGET_CURTAIN
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 

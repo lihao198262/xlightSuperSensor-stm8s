@@ -103,7 +103,7 @@ void testio()
 
 // Window Watchdog
 // Uncomment this line if in debug mode
-#define DEBUG_NO_WWDG
+//#define DEBUG_NO_WWDG
 #define WWDG_COUNTER                    0x7f
 #define WWDG_WINDOW                     0x77
 
@@ -168,6 +168,9 @@ uint8_t m_cntRFReset = 0;
 uint8_t m_cntRFSendFailed = 0;
 // avoid flash write operator reentry
 uint8_t flashWritting = 0;
+// curtain operation min interval
+#define CURTAIN_MIN_INTERVAL  50 // 500ms
+uint8_t mLastCurtainTime = 0;
 
 #ifdef EN_SENSOR_ALS
    uint16_t als_tick = 0;
@@ -1086,11 +1089,21 @@ void tmrProcess() {
 #endif  
 
 #if (defined ZENREMOTE) && (!defined EN_PANEL_BUTTONS)
+  if(IS_TARGET_CURTAIN(gConfig.type) && mLastCurtainTime < CURTAIN_MIN_INTERVAL) mLastCurtainTime++;
   // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
-      // Timer started
-      ScanKeyBuffer(i);
+      {
+        if(IS_TARGET_CURTAIN(gConfig.type) && mLastCurtainTime >= CURTAIN_MIN_INTERVAL)
+        {
+          ScanKeyBuffer(i);
+          mLastCurtainTime = 0;
+        }
+        else
+        {
+          ScanKeyBuffer(i);
+        }
+      }
     }
   }
 #endif

@@ -190,7 +190,7 @@
         <option>
           <name>CCDefines</name>
           <state>STM8S105</state>
-          <state>ZENSENSOR</state>
+          <state>ZENREMOTE</state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -491,7 +491,7 @@
         </option>
         <option>
           <name>OOCOutputFile</name>
-          <state>aircondition.hex</state>
+          <state>curtain.hex</state>
         </option>
         <option>
           <name>OOCCommandLineProducer</name>
