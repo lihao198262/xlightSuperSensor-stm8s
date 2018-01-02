@@ -93,6 +93,22 @@ void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _typ
     moSetAck(_isAck);
 }
 
+bool AddKeyOperation(u8 _target, const char *_keyString, u8 _len)
+{
+  bool ret = FALSE;
+  bool delay = FALSE;
+  if( IS_TARGET_CURTAIN(gConfig.type)) delay = TRUE;
+  if(delay)
+  {
+    AddKeySimToBuf(_target,_keyString,_len);
+  }
+  else
+  {
+    ret = ProduceKeyOperation(_target, _keyString, _len);
+  }
+  return ret;
+}
+
 uint8_t ParseProtocol(){
   if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 )) ) return 0;
   
@@ -264,12 +280,13 @@ uint8_t ParseProtocol(){
             if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
             {
               targetSubID = gConfig.type & 0x0F;
-              _OnOff = ProduceKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
+              _OnOff = AddKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
+              //_OnOff = ProduceKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
             }
             else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
             {
               targetSubID = gConfig.type & 0x0F;
-              _OnOff = ProduceKeyOperation(targetSubID, CURTAIN_ON, CURTAIN_SW_LEN);
+              _OnOff = AddKeyOperation(targetSubID, CURTAIN_ON, CURTAIN_SW_LEN);
             }
             if( _needAck ) {
               Msg_Relay_Ack(_sender, gConfig.type, _OnOff);
@@ -339,7 +356,7 @@ uint8_t ParseProtocol(){
         // General Key Control
         /// Get SubID
         targetSubID = _type & 0x0F;
-        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        _OnOff = AddKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
         //printlog(rcvMsg.payload.data);
         if( _needAck ) {
           Msg_Relay_Ack(_sender, _type, _OnOff);
@@ -349,7 +366,7 @@ uint8_t ParseProtocol(){
         // General Key Control
         /// Get SubID
         targetSubID = _type & 0x0F;
-        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        _OnOff = AddKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
         if( _needAck ) {
           Msg_Relay_Ack(_sender, _type, _OnOff);
           return 1;

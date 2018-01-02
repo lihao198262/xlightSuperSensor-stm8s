@@ -168,9 +168,16 @@ uint8_t m_cntRFReset = 0;
 uint8_t m_cntRFSendFailed = 0;
 // avoid flash write operator reentry
 uint8_t flashWritting = 0;
+
 // curtain operation min interval
 #define CURTAIN_MIN_INTERVAL  50 // 500ms
-uint8_t mLastCurtainTime = 0;
+#define KEYSIMULATOR_BUF      3  
+Key_Simulator_t m_keySim[KEYSIMULATOR_BUF];  // to process short time of continuous key
+uint8_t keySimBufLen = 0;
+uint8_t wKeySimIdx = 0;
+uint8_t rKeySimIdx = 0;
+uint8_t mLastOpKeysimTime = 0;
+uint8_t mLastAddKeysimTime = 0;
 
 #ifdef EN_SENSOR_ALS
    uint16_t als_tick = 0;
@@ -202,11 +209,86 @@ uint8_t mLastCurtainTime = 0;
 uint16_t ariquality_tick = 0;
 uint16_t tem_hum_tick = 0;
 #endif
+
+bool AddKeySimToBuf(u8 _target, const char *_keyString, u8 _len)
+{
+  bool add = TRUE;
+  if(keySimBufLen >= KEYSIMULATOR_BUF) return FALSE;
+  else
+  {
+    if(mLastAddKeysimTime < CURTAIN_MIN_INTERVAL)
+    {
+      uint8_t lastIdx = (wKeySimIdx+KEYSIMULATOR_BUF-1)%KEYSIMULATOR_BUF;
+      if( _len == m_keySim[lastIdx].keyLen && memcmp(m_keySim[lastIdx].keySimulator,_keyString,_len) == 0)
+      {
+        printlog("ignore;");
+        add = FALSE;
+        return TRUE;
+      }
+    }
+    if(add)
+    {
+      printlog("add;");
+      mLastAddKeysimTime = 0;
+      memset(&m_keySim[wKeySimIdx],0,sizeof(Key_Simulator_t));
+      m_keySim[wKeySimIdx].keyLen = _len;
+      memcpy(m_keySim[wKeySimIdx].keySimulator,_keyString,_len);
+      m_keySim[wKeySimIdx].target = _target;
+      wKeySimIdx = (wKeySimIdx+1)%KEYSIMULATOR_BUF;
+      keySimBufLen++;
+    }
+  }
+  return add;
+}
+
+void OpKeySimBuf()
+{
+  if(keySimBufLen >0)
+  {
+    if(mLastOpKeysimTime >= CURTAIN_MIN_INTERVAL)
+    { // contain same relay operation, must be executed sequentially
+      //printlog("");
+      ProduceKeyOperation(m_keySim[rKeySimIdx].target, m_keySim[rKeySimIdx].keySimulator, m_keySim[rKeySimIdx].keyLen);
+      //memset(&m_keySim[rKeySimIdx],0,sizeof(Key_Simulator_t));
+      rKeySimIdx = (rKeySimIdx+1)%KEYSIMULATOR_BUF;
+      keySimBufLen--;
+      mLastOpKeysimTime = 0;
+    }
+  }
+}
  
+void itoa(unsigned int n, char * buf)
+{
+        int i;
+        
+        if(n < 10)
+        {
+                buf[0] = n + '0';
+                buf[1] = '\0';
+                return;
+        }
+        itoa(n / 10, buf);
+
+        for(i=0; buf[i]!='\0'; i++);
+        
+        buf[i] = (n % 10) + '0';
+        
+        buf[i+1] = '\0';
+}
+
 void printlog(uint8_t *pBuf)
 {
 #ifdef DEBUG_LOG
   Uart2SendString(pBuf);
+#endif
+}
+
+void printnum(unsigned int num)
+{
+#ifdef DEBUG_LOG
+  char buf[10] = {0};
+  itoa(num,buf);
+  printlog(buf);
 #endif
 }
 
@@ -765,7 +847,8 @@ int main( void ) {
    int16_t pre_tem = 0;
    int16_t pre_hum = 0;
 #endif
-      
+   memset(&m_keySim,0x00,sizeof(Key_Simulator_t)*KEYSIMULATOR_BUF); 
+   
   //After reset, the device restarts by default with the HSI clock divided by 8.
   //CLK_DeInit();
   /* High speed internal clock prescaler: 1 */
@@ -1050,6 +1133,7 @@ int main( void ) {
 #endif
       // Save Config if Changed
       SaveConfig();
+      OpKeySimBuf();
       
       // ToDo: Check heartbeats
       // mStatus = SYS_RESET, if timeout or received a value 3 times consecutively
@@ -1089,20 +1173,18 @@ void tmrProcess() {
 #endif  
 
 #if (defined ZENREMOTE) && (!defined EN_PANEL_BUTTONS)
-  if(IS_TARGET_CURTAIN(gConfig.type) && mLastCurtainTime < CURTAIN_MIN_INTERVAL) mLastCurtainTime++;
+  if(IS_TARGET_CURTAIN(gConfig.type)) 
+  {
+    if(mLastOpKeysimTime < CURTAIN_MIN_INTERVAL)
+      mLastOpKeysimTime++;
+    if(mLastAddKeysimTime < CURTAIN_MIN_INTERVAL)
+      mLastAddKeysimTime++;
+  }
   // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
       {
-        if(IS_TARGET_CURTAIN(gConfig.type) && mLastCurtainTime >= CURTAIN_MIN_INTERVAL)
-        {
-          ScanKeyBuffer(i);
-          mLastCurtainTime = 0;
-        }
-        else
-        {
-          ScanKeyBuffer(i);
-        }
+        ScanKeyBuffer(i);
       }
     }
   }
