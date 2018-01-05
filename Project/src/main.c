@@ -1133,7 +1133,7 @@ int main( void ) {
 #endif
       // Save Config if Changed
       SaveConfig();
-      OpKeySimBuf();
+      //OpKeySimBuf();
       
       // ToDo: Check heartbeats
       // mStatus = SYS_RESET, if timeout or received a value 3 times consecutively
@@ -1180,6 +1180,7 @@ void tmrProcess() {
     if(mLastAddKeysimTime < CURTAIN_MIN_INTERVAL)
       mLastAddKeysimTime++;
   }
+  OpKeySimBuf();
   // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {

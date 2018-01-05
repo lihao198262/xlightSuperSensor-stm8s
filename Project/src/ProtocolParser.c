@@ -280,12 +280,14 @@ uint8_t ParseProtocol(){
             if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
             {
               targetSubID = gConfig.type & 0x0F;
+              AddKeyOperation(targetSubID, CURTAIN_PAUSE, CURTAIN_PAUSE_LEN);
               _OnOff = AddKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
               //_OnOff = ProduceKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
             }
             else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
             {
               targetSubID = gConfig.type & 0x0F;
+              AddKeyOperation(targetSubID, CURTAIN_PAUSE, CURTAIN_PAUSE_LEN);
               _OnOff = AddKeyOperation(targetSubID, CURTAIN_ON, CURTAIN_SW_LEN);
             }
             if( _needAck ) {
@@ -315,24 +317,40 @@ uint8_t ParseProtocol(){
           }
           else if(IS_TARGET_AIRCONDITION(gConfig.type) )
           {
+#ifdef EN_INFRARED
             if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
             {
+              printlog("off");
 #if defined AIRCON_MEDIA
-            Set_AC_Media_Buf(mediaoff, 3);
+              Set_AC_Media_Buf(mediaoff, 3);
 #elif defined AIRCON_HAIER
-            char haieroffbuf[14] = {0};
-            Set_AC_Buf(haieroffbuf, 14);
+              Set_AC_Buf(haieroff, 14);
 #endif
             }
             else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
             { // todo
-#if defined AIRCON_MEDIA
-            Set_AC_Media_Buf(media_last_on_status, 3);
+              printlog("on");
+#if defined AIRCON_MEDIA    
+              if(gConfig.aircondition_on_status[0] == mediaoff[0])
+              {
+                Set_AC_Media_Buf(gConfig.aircondition_on_status, 3);
+              }
+              else
+              {
+                Set_AC_Media_Buf(media_last_on_status, 3);
+              }
 #elif defined AIRCON_HAIER
-            Set_AC_Buf(haier_last_on_status, 14);
+              if(gConfig.aircondition_on_status[0] == haieroff[0])
+              {
+                Set_AC_Buf(gConfig.aircondition_on_status, 14);
+              }
+              else
+              {
+                Set_AC_Buf(haier_last_on_status, 14);
+              }
 #endif
             }
-
+#endif
           }
           else if(IS_TARGET_SPOTLIGHT(gConfig.type) )
           {

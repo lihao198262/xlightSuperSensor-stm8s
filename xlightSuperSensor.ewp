@@ -491,7 +491,7 @@
         </option>
         <option>
           <name>OOCOutputFile</name>
-          <state>curtain.hex</state>
+          <state>aircondition_media.hex</state>
         </option>
         <option>
           <name>OOCCommandLineProducer</name>
