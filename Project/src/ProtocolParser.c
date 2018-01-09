@@ -65,6 +65,17 @@ bool SendCfgBlock(uint8_t offset,uint8_t size,uint8_t isNeedUniqueid) {
     SendMyMessage();
 }
 
+// Send spotlight log
+/*void SpotlightStatusLog(uint8_t _st,uint8_t _relaykey) { 
+  char pBuf[20];
+  memset(pBuf, 0x00, 20);
+  pBuf[0] = 's';
+  pBuf[1] = ' ';
+  pBuf[2] = _st + '0';
+  pBuf[3] = _relaykey;
+  printlog((uint8_t *)pBuf);
+}*/
+
 // Assemble message
 void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _type, bool _enableAck, bool _isAck)
 {
@@ -82,8 +93,24 @@ void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _typ
     moSetAck(_isAck);
 }
 
+bool AddKeyOperation(u8 _target, const char *_keyString, u8 _len)
+{
+  bool ret = FALSE;
+  bool delay = FALSE;
+  if( IS_TARGET_CURTAIN(gConfig.type)) delay = TRUE;
+  if(delay)
+  {
+    AddKeySimToBuf(_target,_keyString,_len);
+  }
+  else
+  {
+    ret = ProduceKeyOperation(_target, _keyString, _len);
+  }
+  return ret;
+}
+
 uint8_t ParseProtocol(){
-  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 || rcvMsg.header.sender == NODEID_GATEWAY)) ) return 0;
+  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 )) ) return 0;
   
   uint8_t _cmd = miGetCommand();
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
@@ -243,14 +270,8 @@ uint8_t ParseProtocol(){
       if( _type == V_STATUS) {
         if(gConfig.nodeID == NODEID_SUPERSENSOR)
         {
-          // set zensensor on/off
-          _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
-          gConfig.state = _OnOff;
-          gIsStatusChanged = TRUE;
-          if( _needAck ) {
-            Msg_DevOnOff(_sender);
-            return 1;
-          }
+          // zensor no need process
+          return 0;
         }
         else
         {
@@ -259,12 +280,15 @@ uint8_t ParseProtocol(){
             if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
             {
               targetSubID = gConfig.type & 0x0F;
-              _OnOff = ProduceKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
+              AddKeyOperation(targetSubID, CURTAIN_PAUSE, CURTAIN_PAUSE_LEN);
+              _OnOff = AddKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
+              //_OnOff = ProduceKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
             }
             else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
             {
               targetSubID = gConfig.type & 0x0F;
-              _OnOff = ProduceKeyOperation(targetSubID, CURTAIN_ON, CURTAIN_SW_LEN);
+              AddKeyOperation(targetSubID, CURTAIN_PAUSE, CURTAIN_PAUSE_LEN);
+              _OnOff = AddKeyOperation(targetSubID, CURTAIN_ON, CURTAIN_SW_LEN);
             }
             if( _needAck ) {
               Msg_Relay_Ack(_sender, gConfig.type, _OnOff);
@@ -293,24 +317,40 @@ uint8_t ParseProtocol(){
           }
           else if(IS_TARGET_AIRCONDITION(gConfig.type) )
           {
+#ifdef EN_INFRARED
             if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
             {
+              printlog("off");
 #if defined AIRCON_MEDIA
-            Set_AC_Media_Buf(mediaoff, 3);
+              Set_AC_Media_Buf(mediaoff, 3);
 #elif defined AIRCON_HAIER
-            char haieroffbuf[14] = {0};
-            Set_AC_Buf(haieroffbuf, 14);
+              Set_AC_Buf(haieroff, 14);
 #endif
             }
             else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
             { // todo
-#if defined AIRCON_MEDIA
-            Set_AC_Media_Buf(media_last_on_status, 3);
+              printlog("on");
+#if defined AIRCON_MEDIA    
+              if(gConfig.aircondition_on_status[0] == mediaoff[0])
+              {
+                Set_AC_Media_Buf(gConfig.aircondition_on_status, 3);
+              }
+              else
+              {
+                Set_AC_Media_Buf(media_last_on_status, 3);
+              }
 #elif defined AIRCON_HAIER
-            Set_AC_Buf(haier_last_on_status, 14);
+              if(gConfig.aircondition_on_status[0] == haieroff[0])
+              {
+                Set_AC_Buf(gConfig.aircondition_on_status, 14);
+              }
+              else
+              {
+                Set_AC_Buf(haier_last_on_status, 14);
+              }
 #endif
             }
-
+#endif
           }
           else if(IS_TARGET_SPOTLIGHT(gConfig.type) )
           {
@@ -323,16 +363,19 @@ uint8_t ParseProtocol(){
       }
       else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
         for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
+          // Send spotlight log
+          //SpotlightStatusLog(_type == V_RELAY_ON,idx + '1');
           if( relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON) ) {
             Msg_Relay_Ack(_sender, _type, rcvMsg.payload.data[idx]);
-            SendMyMessage();
+            //SendMyMessage();
           }
         }
       } else if( IS_TARGET_CURTAIN(gConfig.type) &&  IS_TARGET_CURTAIN(_type) ) {
         // General Key Control
         /// Get SubID
         targetSubID = _type & 0x0F;
-        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        _OnOff = AddKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        //printlog(rcvMsg.payload.data);
         if( _needAck ) {
           Msg_Relay_Ack(_sender, _type, _OnOff);
           return 1;
@@ -341,7 +384,7 @@ uint8_t ParseProtocol(){
         // General Key Control
         /// Get SubID
         targetSubID = _type & 0x0F;
-        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        _OnOff = AddKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
         if( _needAck ) {
           Msg_Relay_Ack(_sender, _type, _OnOff);
           return 1;

@@ -22,13 +22,14 @@
 
 #define AIRCON_MEDIA
 //#define AIRCON_HAIER
+
 #ifdef AIRCON_MEDIA
-extern char mediaoff[4];
-extern char media_last_on_status[4];
+extern uint8_t mediaoff[4];
+extern uint8_t media_last_on_status[4];
 #endif
 #ifdef AIRCON_HAIER
-extern char haieroff[15];
-extern char haier_last_on_status[15];
+extern uint8_t haieroff[15];
+extern uint8_t haier_last_on_status[15];
 #endif
 
 

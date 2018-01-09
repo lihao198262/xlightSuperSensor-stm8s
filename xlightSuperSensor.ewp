@@ -190,7 +190,7 @@
         <option>
           <name>CCDefines</name>
           <state>STM8S105</state>
-          <state>ZENSENSOR</state>
+          <state>ZENREMOTE</state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -491,7 +491,7 @@
         </option>
         <option>
           <name>OOCOutputFile</name>
-          <state>airpurifier.hex</state>
+          <state>aircondition_media.hex</state>
         </option>
         <option>
           <name>OOCCommandLineProducer</name>
@@ -1704,16 +1704,19 @@
         <name>$PROJ_DIR$\Project\inc\sen_als.h</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\inc\sen_dht.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\inc\sen_irkey.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\sen_mic.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\Project\inc\sen_multi.h</name>
+        <name>$PROJ_DIR$\Project\inc\sen_pir.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\Project\inc\sen_pir.h</name>
+        <name>$PROJ_DIR$\Project\inc\sen_pm25.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\inc\stm8s_conf.h</name>
@@ -1764,16 +1767,19 @@
         <name>$PROJ_DIR$\Project\src\sen_als.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$\Project\src\sen_dht.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\Project\src\sen_irkey.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\sen_mic.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\Project\src\sen_multi.c</name>
+        <name>$PROJ_DIR$\Project\src\sen_pir.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\Project\src\sen_pir.c</name>
+        <name>$PROJ_DIR$\Project\src\sen_pm25.c</name>
       </file>
       <file>
         <name>$PROJ_DIR$\Project\src\timer_2.c</name>
@@ -1786,6 +1792,9 @@
       </file>
     </group>
   </group>
+  <file>
+    <name>$PROJ_DIR$\Project\inc\sen_multi.h</name>
+  </file>
 </project>
 
 

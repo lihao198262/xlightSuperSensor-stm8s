@@ -10,7 +10,7 @@
 /// Comment off line to disable panel buttons(spotlight need)
 //#define EN_PANEL_BUTTONS
 /// Comment off line to disable infrared(aircondition need)
-//#define EN_INFRARED
+#define EN_INFRARED
 /// Comment off line to disable Relay key input
 //#define EN_SENSOR_IRKEY
 // Notes: EN_PANEL_BUTTONS & EN_SENSOR_IRKEY can't exist at the same time
@@ -18,25 +18,27 @@
 //#undef EN_SENSOR_IRKEY
 //#endif
 
+#ifdef ZENSENSOR
 // Include Sensors
 /// Comment off line to disable sensor
-#define EN_SENSOR_ALS
+//#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
-#define MULTI_SENSOR
-#ifndef MULTI_SENSOR
+//#define MULTI_SENSOR
+//#ifndef MULTI_SENSOR
 //#define EN_SENSOR_DHT
 //#define EN_SENSOR_PM25
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
+//#endif
 #endif
 
 #ifdef ZENREMOTE
 #undef EN_SENSOR_DHT
 #endif
 
-#define DEBUG_LOG
+//#define DEBUG_LOG
 
 // Common Data Type
 #define UC                        uint8_t
@@ -107,6 +109,14 @@ typedef struct
   UC keyMap;                                // Button Key Map: 8 bits for each button, one bit corresponds to one relay key
 } Button_Action_t;
 
+typedef struct
+{
+  uint8_t target;                            // target
+  uint8_t keyLen;                            // KeySimulator length
+  UC keySimulator[15];                       // string of keysimulator
+} Key_Simulator_t;
+
+
 // Xlight Application Identification
 #define XLA_VERSION               0x08
 #define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
@@ -122,6 +132,9 @@ typedef struct
   UC swTimes                  :4;           // On/Off times
   UC reserved0                :2;
   UC relay_key_value          :8;           // Relay Key Bitmap
+#ifdef EN_INFRARED  
+  UC aircondition_on_status[20];            // aircondition last on status
+#endif 
 
   // Configurable parameters
   UC nodeID;                                // Node ID for this device
@@ -178,12 +191,15 @@ extern bool gResetNode;
 extern uint8_t _uniqueID[UNIQUE_ID_LEN];
 
 void printlog(uint8_t *pBuf);
+void printnum(unsigned int num);
 bool isIdentityEqual(const UC *pId1, const UC *pId2, UC nLen);
 void GotNodeID();
 void GotPresented();
 bool SendMyMessage();
 void tmrProcess();
 void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _on);
+bool AddKeySimToBuf(u8 _target, const char *_keyString, u8 _len);
+void ProcessMyMessage();
 
 #define IS_MINE_SUBID(nSID)             ((nSID) == 0 || ((nSID) & gConfig.subID))
 #define IS_TARGET_CURTAIN(nTag)         (((nTag) & 0xF0) == ZEN_TARGET_CURTAIN)
@@ -203,7 +219,7 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
 #endif
 
-#define TEST
+//#define TEST
 #ifdef TEST
 #define     PB5_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_5)
 #define     PB4_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_4)

@@ -61,8 +61,11 @@ void relay_key_init()
   GPIO_Init(SOFT_KEY_8_PIN_PORT, SOFT_KEY_8_PIN_ID, GPIO_MODE_OUT_PP_LOW_SLOW);
 #endif
   
+#ifdef EN_PANEL_BUTTONS
+  // spotlight need restore last status
   // Restore previous on/off states
   relay_restore_keystates();
+#endif
 }
 
 void relay_restore_keystates() {
