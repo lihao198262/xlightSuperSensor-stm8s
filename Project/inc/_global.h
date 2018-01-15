@@ -7,29 +7,38 @@
 #include "stm8s_conf.h"
 
 /* Exported types ------------------------------------------------------------*/
-/// Comment off line to disable panel buttons
-#define EN_PANEL_BUTTONS
+/// Comment off line to disable panel buttons(spotlight need)
+//#define EN_PANEL_BUTTONS
+/// Comment off line to disable infrared(aircondition need)
+#define EN_INFRARED
 /// Comment off line to disable Relay key input
 //#define EN_SENSOR_IRKEY
 // Notes: EN_PANEL_BUTTONS & EN_SENSOR_IRKEY can't exist at the same time
-#ifdef EN_PANEL_BUTTONS
-#undef EN_SENSOR_IRKEY
-#endif
+//#ifdef EN_PANEL_BUTTONS
+//#undef EN_SENSOR_IRKEY
+//#endif
 
+#ifdef ZENSENSOR
 // Include Sensors
 /// Comment off line to disable sensor
 //#define EN_SENSOR_ALS
 //#define EN_SENSOR_MIC
 //#define EN_SENSOR_PIR
+//#define MULTI_SENSOR
+//#ifndef MULTI_SENSOR
+//#define EN_SENSOR_DHT
 //#define EN_SENSOR_PM25
 //#define EN_SENSOR_MQ135
 //#define EN_SENSOR_MQ2
 //#define EN_SENSOR_MQ7
+//#endif
+#endif
+
 #ifdef ZENREMOTE
 #undef EN_SENSOR_DHT
-#else
-#define EN_SENSOR_DHT
 #endif
+
+//#define DEBUG_LOG
 
 // Common Data Type
 #define UC                        uint8_t
@@ -100,20 +109,32 @@ typedef struct
   UC keyMap;                                // Button Key Map: 8 bits for each button, one bit corresponds to one relay key
 } Button_Action_t;
 
+typedef struct
+{
+  uint8_t target;                            // target
+  uint8_t keyLen;                            // KeySimulator length
+  UC keySimulator[15];                       // string of keysimulator
+} Key_Simulator_t;
+
+
 // Xlight Application Identification
 #define XLA_VERSION               0x08
 #define XLA_ORGANIZATION          "xlight.ca"               // Default value. Read from EEPROM
 
 #if XLA_VERSION > 0x07
+#define XLA_MIN_VER_REQUIREMENT   0x08
 typedef struct
 {
   // Static & status parameters
   UC version                  :8;           // Data version, other than 0xFF
   UC present                  :1;           // 0 - not present; 1 - present
   UC state                    :1;           // SuperSensor On/Off
-  UC swTimes                  :3;           // On/Off times
-  UC reserved0                :3;
+  UC swTimes                  :4;           // On/Off times
+  UC reserved0                :2;
   UC relay_key_value          :8;           // Relay Key Bitmap
+#ifdef EN_INFRARED  
+  UC aircondition_on_status[20];            // aircondition last on status
+#endif 
 
   // Configurable parameters
   UC nodeID;                                // Node ID for this device
@@ -133,6 +154,7 @@ typedef struct
 #endif  
 } Config_t;
 #else
+#define XLA_MIN_VER_REQUIREMENT   0x03
 typedef struct
 {
   UC version                  :8;           // Data version, other than 0xFF
@@ -162,16 +184,22 @@ typedef struct
 
 extern Config_t gConfig;
 extern bool gIsChanged;
+extern bool gNeedSaveBackup;
+extern bool gIsStatusChanged;
 extern bool gResetRF;
 extern bool gResetNode;
 extern uint8_t _uniqueID[UNIQUE_ID_LEN];
 
+void printlog(uint8_t *pBuf);
+void printnum(unsigned int num);
 bool isIdentityEqual(const UC *pId1, const UC *pId2, UC nLen);
 void GotNodeID();
 void GotPresented();
 bool SendMyMessage();
 void tmrProcess();
 void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _on);
+bool AddKeySimToBuf(u8 _target, const char *_keyString, u8 _len);
+void ProcessMyMessage();
 
 #define IS_MINE_SUBID(nSID)             ((nSID) == 0 || ((nSID) & gConfig.subID))
 #define IS_TARGET_CURTAIN(nTag)         (((nTag) & 0xF0) == ZEN_TARGET_CURTAIN)
@@ -179,5 +207,36 @@ void relay_gpio_write_bit(GPIO_TypeDef* GPIOx, GPIO_Pin_TypeDef PortPins, bool _
 #define IS_TARGET_AIRCONDITION(nTag)    (((nTag) & 0xF0) == ZEN_TARGET_AIRCONDITION)
 #define IS_TARGET_SPOTLIGHT(nTag)       (((nTag) & 0xF0) == ZEN_TARGET_SPOTLIGHT)
 #define IS_TARGET_SUPERSENSOR(nTag)     (((nTag) & 0xF0) == ZEN_TARGET_SUPERSENSOR)
+
+// Choose Product Name & Type
+#ifdef ZENSENSOR
+#define XLA_PRODUCT_NAME          "ZENSENSOR"
+#define XLA_PRODUCT_Type          ZEN_TARGET_SUPERSENSOR
+#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
+#else
+#define XLA_PRODUCT_NAME          "ZENREMOTE"
+#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
+#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
+#endif
+
+//#define TEST
+#ifdef TEST
+#define     PB5_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_5)
+#define     PB4_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_4)
+#define     PB3_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_3)
+#define     PB2_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_2)
+#define     PB1_Low                GPIO_WriteLow(GPIOB , GPIO_PIN_1)
+#define     PD1_Low                GPIO_WriteLow(GPIOD , GPIO_PIN_1)
+#define     PD2_Low                GPIO_WriteLow(GPIOD , GPIO_PIN_2)
+#define     PD7_Low                GPIO_WriteLow(GPIOD , GPIO_PIN_7)
+#define     PB5_High                GPIO_WriteHigh(GPIOB , GPIO_PIN_5)
+#define     PB4_High                GPIO_WriteHigh(GPIOB , GPIO_PIN_4)
+#define     PB3_High                GPIO_WriteHigh(GPIOB , GPIO_PIN_3)
+#define     PB2_High                GPIO_WriteHigh(GPIOB , GPIO_PIN_2)
+#define     PB1_High                GPIO_WriteHigh(GPIOB , GPIO_PIN_1)
+#define     PD1_High                GPIO_WriteHigh(GPIOD , GPIO_PIN_1)
+#define     PD2_High                GPIO_WriteHigh(GPIOD , GPIO_PIN_2)
+#define     PD7_High                GPIO_WriteHigh(GPIOD , GPIO_PIN_7)
+#endif
 
 #endif /* __GLOBAL_H */

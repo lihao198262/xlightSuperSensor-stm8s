@@ -43,4 +43,9 @@ void Msg_SenPM25(uint16_t _value);
 void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type);
 #endif
 
+#ifdef MULTI_SENSOR
+void Msg_SenTemHum(s16 tem,s16 hum);
+void Msg_SenAirQuality(uint16_t pm25,uint16_t pm10,uint16_t tvoc,uint16_t ch2o,uint16_t co2);
+#endif
+
 #endif /* __PROTOCOL_PARSER_H */

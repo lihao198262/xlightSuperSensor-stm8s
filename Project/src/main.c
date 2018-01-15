@@ -3,13 +3,28 @@
 #include "MyMessage.h"
 #include "xliNodeConfig.h"
 #include "ProtocolParser.h"
-#include "Uart2Dev.h"
 #include "timer_4.h"
-#include "relay_key.h"
-#include "keySimulator.h"
-#include "infrared.h"
 
-#ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
+#ifdef ZENREMOTE
+#include "relay_key.h"
+#ifndef EN_PANEL_BUTTONS
+#include "keySimulator.h"
+#endif
+#endif
+
+#ifdef MULTI_SENSOR
+#include "sen_multi.h"
+#endif
+
+#ifdef DEBUG_LOG
+#include "Uart2Dev.h"
+#endif
+
+#ifdef EN_INFRARED
+#include "infrared.h"
+#endif
+
+#if (defined EN_SENSOR_ALS) || (defined EN_SENSOR_MIC)
 #include "ADC1Dev.h"
 #endif
 
@@ -64,23 +79,31 @@ Connections:
 
 */
 
-// Choose Product Name & Type
-#ifdef ZENSENSOR
-#define XLA_PRODUCT_NAME          "ZENSENSOR"
-#define XLA_PRODUCT_Type          ZEN_TARGET_SUPERSENSOR
-#define XLA_PRODUCT_NODEID        NODEID_SUPERSENSOR
-#else
-#define XLA_PRODUCT_NAME          "ZENREMOTE"
-#define XLA_PRODUCT_Type          ZEN_TARGET_AIRCONDITION
-#define XLA_PRODUCT_NODEID        NODEID_KEYSIMULATOR
+#ifdef TEST
+void testio()
+{
+  GPIO_Init(GPIOB , GPIO_PIN_5 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_4 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_3 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_2 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOB , GPIO_PIN_1 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOD , GPIO_PIN_1 , GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(GPIOD , GPIO_PIN_7 , GPIO_MODE_OUT_PP_LOW_SLOW);
+}
 #endif
 
+// Starting Flash block number of backup config
+#define BACKUP_CONFIG_BLOCK_NUM         2
+#define BACKUP_CONFIG_ADDRESS           (FLASH_DATA_START_PHYSICAL_ADDRESS + BACKUP_CONFIG_BLOCK_NUM * FLASH_BLOCK_SIZE)
+#define STATUS_DATA_NUM                 4
+#define STATUS_DATA_ADDRESS             (FLASH_DATA_START_PHYSICAL_ADDRESS + STATUS_DATA_NUM * FLASH_BLOCK_SIZE)
+
 // RF channel for the sensor net, 0-127
-#define RF24_CHANNEL	   		71
+#define RF24_CHANNEL	   		100
 
 // Window Watchdog
 // Uncomment this line if in debug mode
-#define DEBUG_NO_WWDG
+//#define DEBUG_NO_WWDG
 #define WWDG_COUNTER                    0x7f
 #define WWDG_WINDOW                     0x77
 
@@ -106,11 +129,12 @@ Connections:
 #define SEN_COLLECT_DHT                 50     // about 500ms (50 * 10ms)
 
 // For Gu'an Demo Classroom
-#define ONOFF_RESET_TIMES               300     // on / off times to reset device, regular value is 3
+#define ONOFF_RESET_TIMES               5     // on / off times to reset device, regular value is 3
 
 #define RAPID_PRESENTATION                     // Don't wait for presentation-ack
 #define REGISTER_RESET_TIMES            30     // default 5, super large value for show only to avoid ID mess
-  
+
+
 // Unique ID
 #if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
   #define     UNIQUE_ID_ADDRESS         (0x48CD)
@@ -127,6 +151,8 @@ MyMessage_t sndMsg, rcvMsg;
 uint8_t *psndMsg = (uint8_t *)&sndMsg;
 uint8_t *prcvMsg = (uint8_t *)&rcvMsg;
 bool gIsChanged = FALSE;
+bool gNeedSaveBackup = FALSE;
+bool gIsStatusChanged = FALSE;
 bool gResetRF = FALSE;
 bool gResetNode = FALSE;
 uint8_t _uniqueID[UNIQUE_ID_LEN];
@@ -140,7 +166,18 @@ uint8_t mutex = 0;
 uint16_t mTimerKeepAlive = 0;
 uint8_t m_cntRFReset = 0;
 uint8_t m_cntRFSendFailed = 0;
+// avoid flash write operator reentry
+uint8_t flashWritting = 0;
 
+// curtain operation min interval
+#define CURTAIN_MIN_INTERVAL  50 // 500ms
+#define KEYSIMULATOR_BUF      3  
+Key_Simulator_t m_keySim[KEYSIMULATOR_BUF];  // to process short time of continuous key
+uint8_t keySimBufLen = 0;
+uint8_t wKeySimIdx = 0;
+uint8_t rKeySimIdx = 0;
+uint8_t mLastOpKeysimTime = 0;
+uint8_t mLastAddKeysimTime = 0;
 
 #ifdef EN_SENSOR_ALS
    uint16_t als_tick = 0;
@@ -158,7 +195,7 @@ uint8_t m_cntRFSendFailed = 0;
    uint16_t irk_tick = 0;
 #endif
 
-#ifdef EN_SENSOR_PM25       
+#ifdef EN_SENSOR_PM25  
    uint16_t pm25_tick = 0;
 #endif 
 
@@ -166,6 +203,94 @@ uint8_t m_cntRFSendFailed = 0;
    uint16_t dht_tem_tick = 0;
    uint16_t dht_collect_tick = 0;
 #endif
+   
+#ifdef MULTI_SENSOR
+#define MULTI_SENSOR_LIVE_TIMEOUT 18000 // 10ms unit(3min)
+uint16_t ariquality_tick = 0;
+uint16_t tem_hum_tick = 0;
+#endif
+
+bool AddKeySimToBuf(u8 _target, const char *_keyString, u8 _len)
+{
+  bool add = TRUE;
+  if(keySimBufLen >= KEYSIMULATOR_BUF) return FALSE;
+  else
+  {
+    if(mLastAddKeysimTime < CURTAIN_MIN_INTERVAL)
+    {
+      uint8_t lastIdx = (wKeySimIdx+KEYSIMULATOR_BUF-1)%KEYSIMULATOR_BUF;
+      if( _len == m_keySim[lastIdx].keyLen && memcmp(m_keySim[lastIdx].keySimulator,_keyString,_len) == 0)
+      {
+        printlog("ignore;");
+        add = FALSE;
+        return TRUE;
+      }
+    }
+    if(add)
+    {
+      printlog("add;");
+      mLastAddKeysimTime = 0;
+      memset(&m_keySim[wKeySimIdx],0,sizeof(Key_Simulator_t));
+      m_keySim[wKeySimIdx].keyLen = _len;
+      memcpy(m_keySim[wKeySimIdx].keySimulator,_keyString,_len);
+      m_keySim[wKeySimIdx].target = _target;
+      wKeySimIdx = (wKeySimIdx+1)%KEYSIMULATOR_BUF;
+      keySimBufLen++;
+    }
+  }
+  return add;
+}
+
+void OpKeySimBuf()
+{
+  if(keySimBufLen >0)
+  {
+    if(mLastOpKeysimTime >= CURTAIN_MIN_INTERVAL)
+    { // contain same relay operation, must be executed sequentially
+      //printlog("");
+      ProduceKeyOperation(m_keySim[rKeySimIdx].target, m_keySim[rKeySimIdx].keySimulator, m_keySim[rKeySimIdx].keyLen);
+      //memset(&m_keySim[rKeySimIdx],0,sizeof(Key_Simulator_t));
+      rKeySimIdx = (rKeySimIdx+1)%KEYSIMULATOR_BUF;
+      keySimBufLen--;
+      mLastOpKeysimTime = 0;
+    }
+  }
+}
+ 
+void itoa(unsigned int n, char * buf)
+{
+        int i;
+        
+        if(n < 10)
+        {
+                buf[0] = n + '0';
+                buf[1] = '\0';
+                return;
+        }
+        itoa(n / 10, buf);
+
+        for(i=0; buf[i]!='\0'; i++);
+        
+        buf[i] = (n % 10) + '0';
+        
+        buf[i+1] = '\0';
+}
+
+void printlog(uint8_t *pBuf)
+{
+#ifdef DEBUG_LOG
+  Uart2SendString(pBuf);
+#endif
+}
+
+void printnum(unsigned int num)
+{
+#ifdef DEBUG_LOG
+  char buf[10] = {0};
+  itoa(num,buf);
+  printlog(buf);
+#endif
+}
 
 // Initialize Window Watchdog
 void wwdg_init() {
@@ -184,6 +309,20 @@ void feed_wwdg(void) {
 #endif  
 }
 
+
+int8_t wait_flashflag_status(uint8_t flag,uint8_t status)
+{
+    uint16_t timeout = 60000;
+    while( FLASH_GetFlagStatus(flag)== status && timeout--);
+    if(!timeout) 
+    {
+      printlog("timeout!");
+      return 1;
+    }
+    return 0;
+}
+
+
 void Flash_ReadBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
   assert_param(IS_FLASH_ADDRESS_OK(Address));
   assert_param(IS_FLASH_ADDRESS_OK(Address+Length));
@@ -193,27 +332,74 @@ void Flash_ReadBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
   }
 }
 
-void Flash_WriteBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
+bool Flash_WriteBuf(uint32_t Address, uint8_t *Buffer, uint16_t Length) {
   assert_param(IS_FLASH_ADDRESS_OK(Address));
   assert_param(IS_FLASH_ADDRESS_OK(Address+Length));
-  
+  if(flashWritting == 1)
+  {
+    return FALSE;
+  }
+  flashWritting = 1;
   // Init Flash Read & Write
   FLASH_SetProgrammingTime(FLASH_PROGRAMTIME_STANDARD);
   FLASH_Unlock(FLASH_MEMTYPE_DATA);
-  while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  //while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  if(wait_flashflag_status(FLASH_FLAG_DUL,RESET)) return FALSE;
+  
+  // Write byte by byte
+  bool rc = TRUE;
+  uint8_t bytVerify, bytAttmpts;
+  for( uint16_t i = 0; i < Length; i++ ) {
+    bytAttmpts = 0;
+    while(++bytAttmpts <= 3) {
+      FLASH_ProgramByte(Address+i, Buffer[i]);
+      FLASH_WaitForLastOperation(FLASH_MEMTYPE_DATA);
+      
+      // Read and verify the byte we just wrote
+      bytVerify = FLASH_ReadByte(Address+i);
+      if( bytVerify == Buffer[i] ) break;
+    }
+    if( bytAttmpts > 3 ) {
+      rc = FALSE;
+      break;
+    }
+  }
+  FLASH_Lock(FLASH_MEMTYPE_DATA);
+  flashWritting = 0;
+  return rc;
+}
+ 
+bool Flash_WriteDataBlock(uint16_t nStartBlock, uint8_t *Buffer, uint16_t Length) {
+  // Init Flash Read & Write
+  if(flashWritting == 1) 
+  {
+    return FALSE;
+  }
+  flashWritting = 1;
+  FLASH_SetProgrammingTime(FLASH_PROGRAMTIME_STANDARD);
+  FLASH_Unlock(FLASH_MEMTYPE_DATA);
+  //while (FLASH_GetFlagStatus(FLASH_FLAG_DUL) == RESET);
+  if(wait_flashflag_status(FLASH_FLAG_DUL,RESET)) return FALSE;
   
   uint8_t WriteBuf[FLASH_BLOCK_SIZE];
   uint16_t nBlockNum = (Length - 1) / FLASH_BLOCK_SIZE + 1;
-  for( uint16_t block = 0; block < nBlockNum; block++ ) {
+  for( uint16_t block = nStartBlock; block < nStartBlock + nBlockNum; block++ ) {
     memset(WriteBuf, 0x00, FLASH_BLOCK_SIZE);
-    for( uint16_t i = 0; i < FLASH_BLOCK_SIZE; i++ ) {
-      WriteBuf[i] = Buffer[block * FLASH_BLOCK_SIZE + i];
+    uint8_t maxLen = FLASH_BLOCK_SIZE;
+    if(block == nStartBlock + nBlockNum -1)
+    {
+      maxLen = Length - (nBlockNum -1)*FLASH_BLOCK_SIZE;
+    }
+    for( uint16_t i = 0; i < maxLen; i++ ) {
+      WriteBuf[i] = Buffer[(block - nStartBlock) * FLASH_BLOCK_SIZE + i];
     }
     FLASH_ProgramBlock(block, FLASH_MEMTYPE_DATA, FLASH_PROGRAMMODE_STANDARD, WriteBuf);
     FLASH_WaitForLastOperation(FLASH_MEMTYPE_DATA);
   }
   
   FLASH_Lock(FLASH_MEMTYPE_DATA);
+  flashWritting = 0;
+  return TRUE;
 }
 
 uint8_t *Read_UniqueID(uint8_t *UniqueID, uint16_t Length)  
@@ -240,12 +426,57 @@ bool isNodeIdRequired()
 }
 
 // Save config to Flash
+void SaveBackupConfig()
+{
+  if( gNeedSaveBackup ) {
+    // Overwrite entire config FLASH
+    if(Flash_WriteDataBlock(BACKUP_CONFIG_BLOCK_NUM, (uint8_t *)&gConfig, sizeof(gConfig)))
+    {
+      gNeedSaveBackup = FALSE;
+    }
+  }
+}
+
+// Save status to Flash
+void SaveStatusData()
+{
+    // Skip the first byte (version)
+    uint8_t pData[50] = {0};
+    uint16_t nLen = (uint16_t)(&(gConfig.nodeID)) - (uint16_t)(&gConfig);
+    memcpy(pData, (uint8_t *)&gConfig, nLen);
+    if(Flash_WriteDataBlock(STATUS_DATA_NUM, pData, nLen))
+    {
+      gIsStatusChanged = FALSE;
+    }
+}
+
+// Save config to Flash
 void SaveConfig()
 {
-  if( gIsChanged ) {
-    Flash_WriteBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    gIsChanged = FALSE;
+  if( gIsStatusChanged ) {
+    // Overwrite only Static & status parameters
+    SaveStatusData();
+    gIsChanged = TRUE;
   }
+#ifdef TEST
+  PD7_High;
+#endif
+  if( gIsChanged ) {
+    // Overwrite entire config FLASH
+    if( !isNodeIdRequired() ) gNeedSaveBackup = TRUE;
+    uint8_t Attmpts = 0;
+    while(++Attmpts <= 3) {
+      if(Flash_WriteDataBlock(0, (uint8_t *)&gConfig, sizeof(gConfig)))
+      {
+        gIsStatusChanged = FALSE;
+        gIsChanged = FALSE;
+        break;
+      }
+    }
+  }
+#ifdef TEST
+  PD7_Low;
+#endif
 }
 
 // Initialize Node Address and look forward to being assigned with a valid NodeID by the SmartController
@@ -255,59 +486,97 @@ void InitNodeAddress() {
   memcpy(gConfig.NetworkID, RF24_BASE_RADIO_ID, ADDRESS_WIDTH);
 }
 
+bool IsConfigInvalid() {
+  return( gConfig.version > XLA_VERSION || gConfig.version < XLA_MIN_VER_REQUIREMENT 
+       || gConfig.nodeID == 0 || gConfig.type != XLA_PRODUCT_Type
+       || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.rfChannel > 127 || gConfig.rfDataRate > RF24_250KBPS );
+}
+
 // Load config from Flash
 void LoadConfig()
 {
-    // Load the most recent settings from FLASH
-    Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
-    if( gConfig.version > XLA_VERSION || gConfig.rfPowerLevel > RF24_PA_MAX || gConfig.nodeID != XLA_PRODUCT_NODEID || gConfig.rfChannel > 127 || gConfig.rfDataRate > 2 ) {
-      memset(&gConfig, 0x00, sizeof(gConfig));
-      gConfig.version = XLA_VERSION;
-      InitNodeAddress();
-      gConfig.subID = 0;
-      gConfig.type = XLA_PRODUCT_Type;
-      gConfig.rptTimes = 1;
-      //sprintf(gConfig.Organization, "%s", XLA_ORGANIZATION);
-      //sprintf(gConfig.ProductName, "%s", XLA_PRODUCT_NAME);
-      gConfig.rfChannel = RF24_CHANNEL;
-      gConfig.rfPowerLevel = RF24_PA_MAX;
-      gConfig.rfDataRate = RF24_1MBPS;
+  // Load the most recent settings from FLASH
+  Flash_ReadBuf(FLASH_DATA_START_PHYSICAL_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
+  //gConfig.version = XLA_VERSION + 1;
+  if( IsConfigInvalid() ) {
+      // If config is OK, then try to load config from backup area
+      Flash_ReadBuf(BACKUP_CONFIG_ADDRESS, (uint8_t *)&gConfig, sizeof(gConfig));
+      if( IsConfigInvalid() ) {
+        // If neither valid, then initialize config with default settings
+        memset(&gConfig, 0x00, sizeof(gConfig));
+        gConfig.version = XLA_VERSION;
+        InitNodeAddress();
+        gConfig.subID = 0;
+        gConfig.type = XLA_PRODUCT_Type;
+        gConfig.rptTimes = 1;
+        //sprintf(gConfig.Organization, "%s", XLA_ORGANIZATION);
+        //sprintf(gConfig.ProductName, "%s", XLA_PRODUCT_NAME);
+        gConfig.rfChannel = RF24_CHANNEL;
+        gConfig.rfPowerLevel = RF24_PA_MAX;
+        gConfig.rfDataRate = RF24_250KBPS;
 
 #ifdef EN_SENSOR_ALS
-      gConfig.senMap |= sensorALS;
+        gConfig.senMap |= sensorALS;
 #endif
 #ifdef EN_SENSOR_MIC
-      gConfig.senMap |= sensorMIC;
+        gConfig.senMap |= sensorMIC;
 #endif
 #ifdef EN_SENSOR_PIR
-      gConfig.senMap |= sensorPIR;
+        gConfig.senMap |= sensorPIR;
 #endif
 #ifdef EN_SENSOR_IRKEY
-      gConfig.senMap |= sensorIRKey;
+        gConfig.senMap |= sensorIRKey;
 #endif      
 #ifdef EN_SENSOR_DHT
-      gConfig.senMap |= sensorDHT;
+        gConfig.senMap |= sensorDHT;
 #endif
 #ifdef EN_SENSOR_PM25
-      gConfig.senMap |= sensorDUST;
+        gConfig.senMap |= sensorDUST;
 #endif
+      }
+      //gConfig.swTimes = 0;
+      gIsChanged = TRUE;
+    } else {
+      uint8_t bytVersion;
+      Flash_ReadBuf(BACKUP_CONFIG_ADDRESS, (uint8_t *)&bytVersion, sizeof(bytVersion));
+      if( bytVersion != gConfig.version ) gNeedSaveBackup = TRUE;
+    }
+    // Load the most recent status from FLASH
+    uint8_t pData[50] = {0};
+    uint16_t nLen = (uint16_t)(&(gConfig.nodeID)) - (uint16_t)(&gConfig);
+    Flash_ReadBuf(STATUS_DATA_ADDRESS, pData, nLen);
+    if(pData[0] >= XLA_MIN_VER_REQUIREMENT && pData[0] <= XLA_VERSION)
+    {
+      memcpy(&gConfig,pData,nLen);
     }
     // Start ZenSensor
     gConfig.state = 1;
-    
-    // Notes: only for Airpuritifier
-    //gConfig.subID = 2;
-    // Notes: only for potlight
-    //gConfig.subID = 4;
-    // Notes: only for AC
-    //gConfig.subID = 1;
-    
+    gConfig.nodeID = XLA_PRODUCT_NODEID;
     // Engineering code
-    gConfig.senMap |= sensorALS;
-    gConfig.senMap |= sensorMIC;
-    gConfig.senMap |= sensorDHT;
-    gConfig.senMap |= sensorDUST;
-    gConfig.senMap |= sensorIRKey;
+    if(XLA_PRODUCT_Type == ZEN_TARGET_SUPERSENSOR)
+    {
+      gConfig.senMap |= sensorALS;
+      gConfig.senMap |= sensorMIC;
+      gConfig.senMap |= sensorDHT;
+      gConfig.senMap |= sensorDUST;
+      gConfig.senMap |= sensorIRKey;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_SPOTLIGHT)
+    {
+      gConfig.subID = 4;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_AIRCONDITION)
+    {
+      gConfig.subID = 1;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_AIRPURIFIER)
+    {
+      gConfig.subID = 2;
+    }
+    if(XLA_PRODUCT_Type == ZEN_TARGET_CURTAIN)
+    {
+      gConfig.subID = 8;
+    }
     
 #ifdef EN_PANEL_BUTTONS
     if( gConfig.btnAction[0][0].action > 0x0F || gConfig.btnAction[1][0].action > 0x0F ) {
@@ -377,9 +646,10 @@ bool SendMyMessage() {
     while (lv_tried++ <= gConfig.rptTimes ) {
       
       mutex = 0;
-      RF24L01_set_mode_TX();
-      RF24L01_write_payload(psndMsg, PLOAD_WIDTH);
-
+      if(RF24L01_set_mode_TX_timeout() == -1) 
+        break;
+      if(RF24L01_write_payload_timeout(psndMsg, PLOAD_WIDTH) == -1) 
+        break;
       WaitMutex(0x1FFFF);
       if (mutex == 1) {
         m_cntRFSendFailed = 0;
@@ -392,7 +662,10 @@ bool SendMyMessage() {
           m_cntRFReset++;
           if( m_cntRFReset >= 3 ) {
             // Cold Reset
-            WWDG->CR = 0x80;
+            if(XLA_PRODUCT_Type!=ZEN_TARGET_SPOTLIGHT)
+            {
+              WWDG->CR = 0x80;
+            }         
             m_cntRFReset = 0;
             break;
           } else if( m_cntRFReset >= 2 ) {
@@ -434,14 +707,15 @@ bool SendMyMessage() {
 void GotNodeID() {
   mGotNodeID = TRUE;
   UpdateNodeAddress(NODEID_GATEWAY);
-  SaveConfig();
+  gIsChanged = TRUE;
+  //SaveConfig();
 }
 
 void GotPresented() {
   mStatus = SYS_RUNNING;
   gConfig.swTimes = 0;
-  gIsChanged = TRUE;
-  SaveConfig();  
+  gIsStatusChanged = TRUE;
+  //SaveConfig();  
 }
 
 bool SayHelloToDevice(bool infinate) {
@@ -511,7 +785,7 @@ bool SayHelloToDevice(bool infinate) {
     // Reset switch count
     if( _count >= 10 && gConfig.swTimes > 0 ) {
       gConfig.swTimes = 0;
-      gIsChanged = TRUE;
+      gIsStatusChanged = TRUE;
       SaveConfig();
     }
     
@@ -563,7 +837,18 @@ int main( void ) {
    uint16_t pre_dht_t = 0;
    uint16_t pre_dht_h = 0;
 #endif   
-      
+ 
+#ifdef MULTI_SENSOR
+   uint16_t pre_pm25 = 0;
+   uint16_t pre_pm10 = 0;
+   uint16_t pre_tvoc = 0;
+   uint16_t pre_ch2o = 0;
+   uint16_t pre_co2 = 0;
+   int16_t pre_tem = 0;
+   int16_t pre_hum = 0;
+#endif
+   memset(&m_keySim,0x00,sizeof(Key_Simulator_t)*KEYSIMULATOR_BUF); 
+   
   //After reset, the device restarts by default with the HSI clock divided by 8.
   //CLK_DeInit();
   /* High speed internal clock prescaler: 1 */
@@ -580,14 +865,12 @@ int main( void ) {
     gConfig.swTimes = 0;
     InitNodeAddress();
   }
-  gIsChanged = TRUE;
-  SaveConfig();
   
   // Init Watchdog
   wwdg_init();
   
-  relay_key_init();
-  keySimulator_init();
+  gIsStatusChanged = TRUE;
+  SaveConfig();
   
   // Init sensors
 #ifdef EN_SENSOR_ALS || EN_SENSOR_MIC
@@ -607,21 +890,40 @@ int main( void ) {
   // Init ADC
   ADC1_Config();
 #endif 
+ 
+#ifdef MULTI_SENSOR 
+  multi_init();
+#endif
+  
+  
+#ifdef DEBUG_LOG
+#if (!defined EN_SENSOR_PM25) && (!defined MULTI_SENSOR)
+  // Init serial ports
+  uart2_config(9600);
+#endif
+#endif
 
+  printlog("start...\r\n");
   // Init timer
   TIM4_10ms_handler = tmrProcess;
   Time4_Init();
   
 #ifdef EN_SENSOR_DHT
   DHT_init();
-#else 
+#else
+#ifdef EN_INFRARED 
   Infrared_Init();
+#endif
 #endif  
 
 #ifdef EN_PANEL_BUTTONS
   button_init();
 #endif  
-  
+  keySimulator_init();
+  relay_key_init(); 
+#ifdef TEST
+   testio();
+#endif
   while(1) {
     // Go on only if NRF chip is presented
     disableInterrupts();
@@ -635,7 +937,6 @@ int main( void ) {
       }
       feed_wwdg();
     }
-    
     // IRQ
     NRF2401_EnableIRQ();
     // Must establish connection firstly
@@ -773,6 +1074,42 @@ int main( void ) {
         }
 #endif
         
+#ifdef MULTI_SENSOR
+        PraseMultiSensorMsg();
+        if(multi_sensor_alive_tick >= MULTI_SENSOR_LIVE_TIMEOUT)
+        {
+            // Reset multi sensor moudle or restart the node
+            mStatus = SYS_RESET;
+            multi_init();
+        }
+        if( !bMsgReady && ariquality_tick > SEN_READ_PM25 ) {
+          if(ariquality_tick > SEN_MAX_SEND_INTERVAL )
+          {
+            ariquality_tick = 0;
+            Msg_SenAirQuality(pre_pm25,pre_pm10,pre_tvoc,pre_ch2o,pre_co2);
+          }
+          else if( pre_pm25 != pm25_value || pre_pm10 != pm10_value || pre_tvoc != tvoc_value || pre_ch2o != ch2o_value || pre_co2 != co2_value)
+          {
+            ariquality_tick = 0;
+            pre_pm25 = pm25_value;
+            pre_pm10 = pm10_value;
+            pre_tvoc = tvoc_value;
+            pre_ch2o = ch2o_value;
+            pre_co2 = co2_value;
+            // Send to Controller
+            Msg_SenAirQuality(pre_pm25,pre_pm10,pre_tvoc,pre_ch2o,pre_co2);
+          }
+        }
+        // tem & hum
+        if( !bMsgReady && tem_hum_tick > SEN_READ_DHT ) {
+            if( pre_tem != tem_value|| pre_hum != hum_value || tem_hum_tick > SEN_MAX_SEND_INTERVAL ) {
+              tem_hum_tick = 0;
+              pre_tem = tem_value;
+              pre_hum = hum_value;
+              Msg_SenTemHum(tem_value,hum_value);  
+            }
+        }
+#endif
         // Idle Tick
         if( !bMsgReady ) {
           // Check Keep Alive Timer
@@ -787,10 +1124,16 @@ int main( void ) {
       ResetRFModule();
       ////////////rfscanner process/////////////////////////////// 
       // Send message if ready
+#ifdef TEST
+      //PB4_High;
+#endif
       SendMyMessage();
-      
+#ifdef TEST
+      //PB4_Low;
+#endif
       // Save Config if Changed
       SaveConfig();
+      //OpKeySimBuf();
       
       // ToDo: Check heartbeats
       // mStatus = SYS_RESET, if timeout or received a value 3 times consecutively
@@ -824,39 +1167,74 @@ void tmrProcess() {
   dht_collect_tick++;
 #endif
   
+#ifdef EN_INFRARED
   // Ir-send timer count down
   if( ir_send_delay > 0 ) ir_send_delay--;
-  
+#endif  
+
+#if (defined ZENREMOTE) && (!defined EN_PANEL_BUTTONS)
+  if(IS_TARGET_CURTAIN(gConfig.type)) 
+  {
+    if(mLastOpKeysimTime < CURTAIN_MIN_INTERVAL)
+      mLastOpKeysimTime++;
+    if(mLastAddKeysimTime < CURTAIN_MIN_INTERVAL)
+      mLastAddKeysimTime++;
+  }
+  OpKeySimBuf();
   // Send Keys
   for( u8 i = 0; i < KEY_OP_MAX_BUFFERS; i++ ) {
     if( gKeyBuf[i].keyNum > 0 ) {
-      // Timer started
-      ScanKeyBuffer(i);
+      {
+        ScanKeyBuffer(i);
+      }
     }
   }
+#endif
   
 #ifdef EN_PANEL_BUTTONS  
   //////zql add for relay key//////////////
   if(relay_loop_tick < 5000) relay_loop_tick++;
   //////zql add for relay key//////////////
 #endif  
+
+#ifdef MULTI_SENSOR
+  multi_sensor_alive_tick++;
+  ariquality_tick++;
+  tem_hum_tick++;
+#endif
+  
+    // Save config into backup area
+   SaveBackupConfig();
   
 }
 
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5) {
+
   if(RF24L01_is_data_available()) {
+#ifdef TEST
+  PB3_High;
+#endif
     //Packet was received
     RF24L01_clear_interrupts();
     RF24L01_read_payload(prcvMsg, PLOAD_WIDTH);
     bMsgReady = ParseProtocol();
+#ifdef TEST
+    PB3_Low;
+#endif
     return;
   }
  
   uint8_t sent_info;
   if (sent_info = RF24L01_was_data_sent()) {
+#ifdef TEST
+  PB4_High;
+#endif
     //Packet was sent or max retries reached
     RF24L01_clear_interrupts();
     mutex = sent_info;
+#ifdef TEST
+    PB4_Low;
+#endif    
     return;
   }
 

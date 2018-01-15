@@ -5,6 +5,12 @@
 #define KEY_OP_MAX_KEYS         6
 #define KEY_OP_MAX_CON_KEYS     4               // Max concurrent keys
 
+#define CURTAIN_ON      "p1"
+#define CURTAIN_OFF     "p2"
+#define CURTAIN_PAUSE   "p1_p2"
+#define CURTAIN_PAUSE_LEN 5
+#define CURTAIN_SW_LEN 2
+
 typedef struct
 {
   u16 delay;

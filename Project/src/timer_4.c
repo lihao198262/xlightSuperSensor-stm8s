@@ -119,6 +119,9 @@ void tick_timeout_handler(void)
 
 INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23)
 { 
+#ifdef TEST
+  PB5_High;
+#endif
   // Timer callbacks
   if( TIM4_1ms_handler ) (*TIM4_1ms_handler)();
   
@@ -138,4 +141,7 @@ INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23)
   }
 
   TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
+#ifdef TEST
+  PB5_Low;
+#endif
 }

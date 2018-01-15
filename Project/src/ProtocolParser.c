@@ -65,10 +65,25 @@ bool SendCfgBlock(uint8_t offset,uint8_t size,uint8_t isNeedUniqueid) {
     SendMyMessage();
 }
 
+// Send spotlight log
+/*void SpotlightStatusLog(uint8_t _st,uint8_t _relaykey) { 
+  char pBuf[20];
+  memset(pBuf, 0x00, 20);
+  pBuf[0] = 's';
+  pBuf[1] = ' ';
+  pBuf[2] = _st + '0';
+  pBuf[3] = _relaykey;
+  printlog((uint8_t *)pBuf);
+}*/
+
 // Assemble message
 void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _type, bool _enableAck, bool _isAck)
 {
     sndMsg.header.version_length = PROTOCOL_VERSION;
+    if(gConfig.nodeID != XLA_PRODUCT_NODEID)
+    {
+      gConfig.nodeID = XLA_PRODUCT_NODEID;
+    }
     sndMsg.header.sender = gConfig.nodeID;
     sndMsg.header.destination = _destination;
     sndMsg.header.sensor = _sensor;
@@ -78,8 +93,24 @@ void build(uint8_t _destination, uint8_t _sensor, uint8_t _command, uint8_t _typ
     moSetAck(_isAck);
 }
 
+bool AddKeyOperation(u8 _target, const char *_keyString, u8 _len)
+{
+  bool ret = FALSE;
+  bool delay = FALSE;
+  if( IS_TARGET_CURTAIN(gConfig.type)) delay = TRUE;
+  if(delay)
+  {
+    AddKeySimToBuf(_target,_keyString,_len);
+  }
+  else
+  {
+    ret = ProduceKeyOperation(_target, _keyString, _len);
+  }
+  return ret;
+}
+
 uint8_t ParseProtocol(){
-  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && rcvMsg.header.sender == NODEID_RF_SCANNER) ) return 0;
+  if( rcvMsg.header.destination != gConfig.nodeID && !(rcvMsg.header.destination == BROADCAST_ADDRESS && (rcvMsg.header.sender == NODEID_RF_SCANNER || rcvMsg.header.sender == 64 )) ) return 0;
   
   uint8_t _cmd = miGetCommand();
   uint8_t _sender = rcvMsg.header.sender;  // The original sender
@@ -104,10 +135,17 @@ uint8_t ParseProtocol(){
             return 0;
           }
         }
-        gConfig.nodeID = lv_nodeID;
-        memcpy(gConfig.NetworkID, rcvMsg.payload.data, sizeof(gConfig.NetworkID));
-        gIsChanged = TRUE;
-        GotNodeID();
+        if(gConfig.nodeID != XLA_PRODUCT_NODEID)
+        {
+          gConfig.nodeID = XLA_PRODUCT_NODEID;
+          gIsChanged = TRUE;
+        }   
+        if(_isAck)
+        { // request nodeid response
+          memcpy(gConfig.NetworkID, rcvMsg.payload.data, sizeof(gConfig.NetworkID));
+          gIsChanged = TRUE;
+          GotNodeID();
+        }
       }
     } else if( _type == I_REBOOT ) {
       if( IS_MINE_SUBID(_sensor) ) {
@@ -207,7 +245,7 @@ uint8_t ParseProtocol(){
         gConfig.token = rcvMsg.payload.uiValue;
         gConfig.present = (gConfig.token >  0);
         GotPresented();
-        gIsChanged = TRUE;
+        gIsStatusChanged = TRUE;
       }
     }
     break;
@@ -229,37 +267,153 @@ uint8_t ParseProtocol(){
     
   case C_SET:
     if( IS_MINE_SUBID(_sensor) && !_isAck ) {
-      if( _type == V_STATUS && gConfig.nodeID == NODEID_SUPERSENSOR ) {
-        // set zensensor on/off
-        _OnOff = (rcvMsg.payload.bValue == DEVICE_SW_TOGGLE ? gConfig.state == DEVICE_SW_OFF : rcvMsg.payload.bValue == DEVICE_SW_ON);
-        gConfig.state = _OnOff;
-        gIsChanged = TRUE;
-        if( _needAck ) {
-          Msg_DevOnOff(_sender);
-          return 1;
+      if( _type == V_STATUS) {
+        if(gConfig.nodeID == NODEID_SUPERSENSOR)
+        {
+          // zensor no need process
+          return 0;
         }
-      } else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
-        for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
-          if( relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON) ) {
-            Msg_Relay_Ack(_sender, _type, rcvMsg.payload.data[idx]);
-            SendMyMessage();
+        else
+        {
+          if( IS_TARGET_CURTAIN(gConfig.type)) {
+            // General Key Control
+            if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
+            {
+              targetSubID = gConfig.type & 0x0F;
+              AddKeyOperation(targetSubID, CURTAIN_PAUSE, CURTAIN_PAUSE_LEN);
+              _OnOff = AddKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
+              //_OnOff = ProduceKeyOperation(targetSubID, CURTAIN_OFF, CURTAIN_SW_LEN);
+            }
+            else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
+            {
+              targetSubID = gConfig.type & 0x0F;
+              AddKeyOperation(targetSubID, CURTAIN_PAUSE, CURTAIN_PAUSE_LEN);
+              _OnOff = AddKeyOperation(targetSubID, CURTAIN_ON, CURTAIN_SW_LEN);
+            }
+            if( _needAck ) {
+              Msg_Relay_Ack(_sender, gConfig.type, _OnOff);
+              return 1;
+            }
+
+          }else if( IS_TARGET_AIRPURIFIER(gConfig.type) ) {
+            // General Key Control
+            /// Get SubID
+            // todo
+            if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
+            {
+              for( u8 key = '1'; key <= '3'; key++ ) {
+                relay_set_key(key, DEVICE_SW_OFF);
+              } 
+              Msg_Relay_Ack(_sender, gConfig.type, DEVICE_SW_OFF);
+              return 1;
+            }
+            else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
+            {
+              if( relay_set_key('1', DEVICE_SW_ON) ) {
+                Msg_Relay_Ack(_sender, gConfig.type, DEVICE_SW_ON);
+                return 1;
+              }
+            }
+          }
+          else if(IS_TARGET_AIRCONDITION(gConfig.type) )
+          {
+#ifdef EN_INFRARED
+            if(rcvMsg.payload.bValue == DEVICE_SW_OFF)
+            {
+              printlog("off");
+#if defined AIRCON_MEDIA
+              Set_AC_Media_Buf(mediaoff, 3);
+#elif defined AIRCON_HAIER
+              Set_AC_Buf(haieroff, 14);
+#endif
+            }
+            else if(rcvMsg.payload.bValue == DEVICE_SW_ON)
+            { // todo
+              printlog("on");
+#if defined AIRCON_MEDIA    
+              if(gConfig.aircondition_on_status[0] == mediaoff[0])
+              {
+                Set_AC_Media_Buf(gConfig.aircondition_on_status, 3);
+              }
+              else
+              {
+                Set_AC_Media_Buf(media_last_on_status, 3);
+              }
+#elif defined AIRCON_HAIER
+              if(gConfig.aircondition_on_status[0] == haieroff[0])
+              {
+                Set_AC_Buf(gConfig.aircondition_on_status, 14);
+              }
+              else
+              {
+                Set_AC_Buf(haier_last_on_status, 14);
+              }
+#endif
+            }
+#endif
+          }
+          else if(IS_TARGET_SPOTLIGHT(gConfig.type) )
+          {
+            if( relay_set_key('1', rcvMsg.payload.bValue == DEVICE_SW_ON) ) {
+              Msg_Relay_Ack(_sender, gConfig.type, rcvMsg.payload.bValue == DEVICE_SW_ON);
+              return 1;
+            }
           }
         }
-      } else if( IS_TARGET_CURTAIN(_type) ) {
+      }
+      else if( _type == V_RELAY_ON || _type == V_RELAY_OFF ) {
+        for( uint8_t idx = 0; idx < _lenPayl; idx++ ) {
+          // Send spotlight log
+          //SpotlightStatusLog(_type == V_RELAY_ON,idx + '1');
+          if( relay_set_key(rcvMsg.payload.data[idx], _type == V_RELAY_ON) ) {
+            Msg_Relay_Ack(_sender, _type, rcvMsg.payload.data[idx]);
+            //SendMyMessage();
+          }
+        }
+      } else if( IS_TARGET_CURTAIN(gConfig.type) &&  IS_TARGET_CURTAIN(_type) ) {
         // General Key Control
         /// Get SubID
         targetSubID = _type & 0x0F;
-        _OnOff = ProduceKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        _OnOff = AddKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        //printlog(rcvMsg.payload.data);
         if( _needAck ) {
           Msg_Relay_Ack(_sender, _type, _OnOff);
           return 1;
         }
-      } else if( IS_TARGET_AIRCONDITION(_type) ) {
-        // ToDo: air conditioner control code goes here
-        if( _lenPayl >= 14 ) {
-          Set_AC_Buf(rcvMsg.payload.data, 14);
+      }else if( IS_TARGET_AIRPURIFIER(gConfig.type) &&  IS_TARGET_AIRPURIFIER(_type) ) {
+        // General Key Control
+        /// Get SubID
+        targetSubID = _type & 0x0F;
+        _OnOff = AddKeyOperation(targetSubID, rcvMsg.payload.data, _lenPayl);
+        if( _needAck ) {
+          Msg_Relay_Ack(_sender, _type, _OnOff);
+          return 1;
         }
-      } else if( IS_TARGET_AIRPURIFIER(_type) ) {
+      }
+      else if(IS_TARGET_AIRCONDITION(gConfig.type) && IS_TARGET_AIRCONDITION(_type) ) {
+        // ToDo: air conditioner control code goes here
+        if(_type == HAIER_CON)
+        {
+          // haier
+          if( _lenPayl >= 14 ) {
+            Set_AC_Buf(rcvMsg.payload.data, 14);
+          }
+        }
+        else if(_type == MEDIA_CON)
+        {
+           if( _lenPayl >= 3 ) {
+            Set_AC_Media_Buf(rcvMsg.payload.data, 3);
+          }
+        }
+        else
+        {
+          // default haier
+          if( _lenPayl >= 14 ) {
+            Set_AC_Buf(rcvMsg.payload.data, 14);
+          }
+        }
+      } 
+      /*else if( IS_TARGET_AIRPURIFIER(_type) ) {
         // Parsing payload
         unsigned long buf[2];
         switch(rcvMsg.payload.data[1]) {
@@ -295,7 +449,7 @@ uint8_t ParseProtocol(){
           break;
         }
         Set_Send_Buf(buf, 1);
-      }
+      }*/
     }
     break;
   }
@@ -442,6 +596,37 @@ void Msg_SenPM25(uint16_t _value) {
 }
 #endif
 
+#ifdef MULTI_SENSOR
+void Msg_SenAirQuality(uint16_t pm25,uint16_t pm10,uint16_t tvoc,uint16_t ch2o,uint16_t co2)
+{
+  build(NODEID_GATEWAY, S_AIR_QUALITY, C_PRESENTATION, V_LEVEL, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(10);
+  sndMsg.payload.data[0] = pm25 % 256;
+  sndMsg.payload.data[1] = pm25 / 256;
+  sndMsg.payload.data[2] = pm10 % 256;
+  sndMsg.payload.data[3] = pm10 / 256;
+  sndMsg.payload.data[4] = tvoc % 256;
+  sndMsg.payload.data[5] = tvoc / 256;
+  sndMsg.payload.data[6] = ch2o % 256;
+  sndMsg.payload.data[7] = ch2o / 256;
+  sndMsg.payload.data[8] = co2 % 256;
+  sndMsg.payload.data[9] = co2 / 256;
+  bMsgReady = 1; 
+}
+
+void Msg_SenTemHum(s16 tem,s16 hum) {
+  build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
+  moSetPayloadType(P_BYTE);
+  moSetLength(4);
+  sndMsg.payload.data[0] = tem/100;
+  sndMsg.payload.data[1] = tem%100;
+  sndMsg.payload.data[2] = hum/100;
+  sndMsg.payload.data[3] = hum%100;    
+  bMsgReady = 1; 
+}
+#endif
+
 #ifdef EN_SENSOR_DHT
 // Prepare DHT message
 /*
@@ -450,6 +635,10 @@ type 1  ---- tem
 type 2  ---- hum
 */
 void Msg_SenDHT(s16 dht_t,s16 dht_h,u8 type) {
+  /*printlog("send t=");
+  printnum(dht_t);
+  printlog(",h=");
+  printnum(dht_h);*/
   if(type == 0)
   {
       build(NODEID_GATEWAY, S_TEMP, C_PRESENTATION, V_LEVEL, 0, 0);
@@ -580,6 +769,7 @@ void Process_SetDevConfig(u8 _len) {
 //////set rf /////////////////////////////////////////////////
 void Process_SetupRF(const UC *rfData,uint8_t rflen)
 {
+  bool bNeedChangeCfg = FALSE;
   if(rflen > 0 &&(*rfData)>=0 && (*rfData)<=127)
   {
     if(gConfig.rfChannel != (*rfData))
@@ -607,9 +797,10 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
     } 
   }
   rfData++;
+  bool bValidNet = FALSE;
+  bool newNetwork[6] = {0};
   if(rflen > 8)
-  {
-    bool bValidNet = FALSE;
+  {  
     for(uint8_t i = 0;i<6;i++)
     {
       if(*(rfData+i) != 0)
@@ -618,26 +809,44 @@ void Process_SetupRF(const UC *rfData,uint8_t rflen)
         break;
       }
     }
-    if(!isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID))&&bValidNet)
+    if(isIdentityEqual(rfData,gConfig.NetworkID,sizeof(gConfig.NetworkID)))
     {
-      memcpy(gConfig.NetworkID,rfData,sizeof(gConfig.NetworkID));
-      gResetRF = TRUE;
+      bValidNet=FALSE;
+    }
+    else
+    {
+      memcpy(newNetwork,rfData,sizeof(newNetwork));
     }
   }
   rfData = rfData + sizeof(gConfig.NetworkID);
+  bool bNeedResetNode = FALSE;
   if(rflen > 9 && (* rfData) != 0)
+  {
     if(gConfig.nodeID != (* rfData))
     {
       gConfig.nodeID = (* rfData);
-      gResetNode=TRUE;
+      bNeedResetNode = TRUE;
     }
+  }
   rfData++; 
-  if(rflen > 10 && (* rfData) != 0)
+  if(rflen > 10)
   {
     if(gConfig.subID != (* rfData ))
     {
       gConfig.subID = (*rfData);
+      bNeedChangeCfg = TRUE;
     }
+  }
+  if(bValidNet)
+  {
+    memcpy(gConfig.NetworkID,newNetwork,sizeof(gConfig.NetworkID));
+    bNeedResetNode = TRUE;
+  }
+  if(bNeedResetNode)
+    gResetNode = TRUE;
+  if(gResetNode || gResetRF || bNeedChangeCfg)
+  {
+    gIsChanged = TRUE;
   }
 }
 //----------------------------------------------

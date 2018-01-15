@@ -217,6 +217,9 @@
       </file>
     </group>
   </group>
+  <file>
+    <name>$PROJ_DIR$\Project\inc\sen_multi.h</name>
+  </file>
 </project>
 
 

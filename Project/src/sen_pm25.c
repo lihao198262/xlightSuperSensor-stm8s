@@ -1,6 +1,7 @@
 #include <stm8s.h>
 #include "sen_pm25.h"
 #include "Uart2Dev.h"
+#include "_global.h"
 
 #define PM25_MESSAGE_HEAD       0xAA
 #define PM25_MESSAGE_TAIL       0xFF
@@ -85,6 +86,9 @@ INTERRUPT_HANDLER(UART2_RX_IRQHandler, 21)
   /* In order to detect unexpected events during development,
   it is recommended to set a breakpoint on the following instruction.
   */
+#ifdef TEST
+  PB3_High;
+#endif
   u8 data;
   if( UART2_GetITStatus(UART2_IT_RXNE) == SET ) {
     data = UART2_ReceiveData8();
@@ -109,4 +113,7 @@ INTERRUPT_HANDLER(UART2_RX_IRQHandler, 21)
     //if( data_ptr == 0 ) 
       UART2_ClearITPendingBit(UART2_IT_RXNE);
   }
+#ifdef TEST
+  PB3_Low;
+#endif
 }
